@@ -6,22 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('profesionals', function (Blueprint $table) {
-            $table->id();
+        Schema::create('profesionales', function (Blueprint $table) {
+            $table->id('id_profesional');
+            $table->foreignId('usuario_id')->constrained('usuarios', 'id_usuario');
+            $table->string('especialidad_principal');
+            $table->string('matricula')->nullable();
+            $table->string('institucion')->nullable();
+            $table->enum('estado_verificacion', ['verificado', 'pendiente', 'rechazado'])->default('pendiente');
+            $table->integer('anios_experiencia')->default(0);
+            $table->text('bio')->nullable();
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('profesionals');
+        Schema::dropIfExists('profesionales');
     }
 };
