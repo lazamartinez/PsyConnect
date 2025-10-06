@@ -16,6 +16,7 @@ use App\Http\Controllers\TriajeController;
 use App\Http\Controllers\MatchingController;
 use App\Http\Controllers\ConfiguracionProfesionalController;
 use App\Http\Middleware\PacienteMiddleware;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -96,6 +97,26 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/solicitudes/{id}', [App\Http\Controllers\Admin\GestionProfesionalesController::class, 'show'])->name('admin.solicitudes.show');
         Route::post('/solicitudes/{id}/aprobar', [App\Http\Controllers\Admin\GestionProfesionalesController::class, 'aprobar'])->name('admin.solicitudes.aprobar');
         Route::post('/solicitudes/{id}/rechazar', [App\Http\Controllers\Admin\GestionProfesionalesController::class, 'rechazar'])->name('admin.solicitudes.rechazar');
+        
+        Route::post('/sistema/reparar', function() {
+            try {
+                Artisan::call('sistema:reparar-matching');
+                $output = Artisan::output();
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Sistema reparado exitosamente',
+                    'output' => $output
+                ]);
+                
+            } catch (\Exception $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al reparar el sistema: ' . $e->getMessage()
+                ], 500);
+            }
+        })->name('admin.sistema.reparar');
+        
     });
 
     // Rutas para profesionales
@@ -107,6 +128,10 @@ Route::middleware(['auth'])->group(function () {
         // Actualizar palabras clave (POST)
         Route::post('/palabras-clave', [ProfesionalController::class, 'actualizarPalabrasClave'])
             ->name('profesional.actualizar-palabras-clave');
+
+        // NUEVA RUTA: Actualizar disponibilidad
+        Route::post('/disponibilidad', [ProfesionalController::class, 'actualizarDisponibilidad'])
+            ->name('profesional.disponibilidad');
 
         // Perfil y compatibilidad
         Route::get('/perfil', [ProfesionalController::class, 'editarPerfil'])->name('profesional.perfil.editar');

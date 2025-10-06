@@ -74,7 +74,14 @@ class ProfesionalController extends Controller
             'json_data' => $request->getContent(),
             'headers' => $request->headers->all()
         ]);
-        
+
+        // LOG TEMPORAL PARA DEBUG - mantener esto temporalmente
+        Log::info('Datos recibidos en actualizarPalabrasClave:', [
+            'all_data' => $request->all(),
+            'user_id' => Auth::id(),
+            'profesional' => Auth::user()->profesional
+        ]);
+
         $profesional = Profesional::where('usuario_id', Auth::id())->firstOrFail();
 
         if (!$profesional->estaAprobado()) {
@@ -84,14 +91,22 @@ class ProfesionalController extends Controller
             ], 403);
         }
 
-        // CORREGIR: Cambiar 'palabras_clave' por 'palabras_clave_especialidad'
+        // CORRECCIÓN: Validar que las palabras clave sean un array
+        $palabrasClave = $request->input('palabras_clave_especialidad', []);
+
+        if (!is_array($palabrasClave)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Formato inválido: palabras_clave_especialidad debe ser un array.'
+            ], 422);
+        }
+
         $request->validate([
             'palabras_clave_especialidad' => 'required|array|min:3',
             'palabras_clave_especialidad.*' => 'string|max:50'
         ]);
 
         try {
-            $palabrasClave = $request->palabras_clave_especialidad;
             $sintomasAtiende = $this->generarSintomasDesdePalabrasClave($palabrasClave);
 
             $profesional->update([
@@ -107,7 +122,7 @@ class ProfesionalController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Palabras clave actualizadas exitosamente. El sistema ahora puede hacer matching con pacientes.',
+                'message' => 'Palabras clave actualizadas exitosamente.',
                 'palabras_clave' => $palabrasClave,
                 'sintomas_atiende' => $sintomasAtiende,
                 'total_palabras' => count($palabrasClave)
@@ -158,5 +173,36 @@ class ProfesionalController extends Controller
         $aceptadas = $profesional->pacientes()->wherePivot('estado', 'activo')->count();
 
         return $totalAsignaciones > 0 ? round(($aceptadas / $totalAsignaciones) * 100, 1) : 0;
+    }
+    public function actualizarDisponibilidad(Request $request)
+    {
+        $profesional = Profesional::where('usuario_id', Auth::id())->firstOrFail();
+
+        $request->validate([
+            'disponibilidad' => 'required|boolean'
+        ]);
+
+        try {
+            $profesional->update([
+                'disponibilidad_inmediata' => $request->disponibilidad
+            ]);
+
+            Log::info("Disponibilidad actualizada para profesional {$profesional->id}", [
+                'disponibilidad' => $request->disponibilidad,
+                'usuario' => Auth::user()->email
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Disponibilidad actualizada correctamente',
+                'disponibilidad' => $request->disponibilidad
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar disponibilidad: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar disponibilidad: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

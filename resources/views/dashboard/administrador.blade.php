@@ -208,6 +208,24 @@
 
                 <!-- Panel de Configuración Avanzada -->
                 <div class="bg-white rounded-lg shadow mb-8">
+
+                    <div class="bg-white rounded-lg shadow p-6 mb-8">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900">
+                                <i class="fas fa-tools text-orange-500 mr-2"></i>
+                                Reparación del Sistema
+                            </h3>
+                            <button onclick="ejecutarReparacionSistema()"
+                                class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center">
+                                <i class="fas fa-magic mr-2"></i>Reparar Sistema
+                            </button>
+                        </div>
+                        <p class="text-gray-600 text-sm">
+                            Ejecuta una reparación automática del sistema de matching. Esto normalizará especialidades
+                            y asignará palabras clave a profesionales sin configuración.
+                        </p>
+                    </div>
+
                     <div class="px-6 py-4 border-b border-gray-200">
                         <div class="flex justify-between items-center">
                             <h2 class="text-lg font-semibold text-gray-900">⚙️ Configuración del Sistema</h2>
@@ -663,11 +681,11 @@
                             </div>
                         </div>
                         ${data.bio ? `
-                                            <div class="mt-4">
-                                                <h4 class="font-semibold text-gray-700">Biografía</h4>
-                                                <p class="text-gray-600">${data.bio}</p>
-                                            </div>
-                                            ` : ''}
+                                                    <div class="mt-4">
+                                                        <h4 class="font-semibold text-gray-700">Biografía</h4>
+                                                        <p class="text-gray-600">${data.bio}</p>
+                                                    </div>
+                                                    ` : ''}
                     `;
                     document.getElementById('modalDetalles').classList.remove('hidden');
                 })
@@ -722,6 +740,44 @@
             });
         }
     </script>
+
+    <script>
+        function ejecutarReparacionSistema() {
+            if (!confirm('¿Estás seguro de que quieres ejecutar la reparación del sistema?')) {
+                return;
+            }
+
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Reparando...';
+            btn.disabled = true;
+
+            fetch('/admin/sistema/reparar', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ ' + data.message);
+                        location.reload();
+                    } else {
+                        throw new Error(data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('❌ Error: ' + error.message);
+                })
+                .finally(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                });
+        }
+    </script>
+
 
 </body>
 

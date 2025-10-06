@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - PsyConnect</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         .gradient-bg {
@@ -35,7 +36,479 @@
         .iea-very-high {
             background: linear-gradient(135deg, #E0E7FF 0%, #8B5CF6 100%);
         }
+
+        .animate-pulse-heart {
+            animation: pulse-heart 2s infinite;
+        }
+
+        @keyframes pulse-heart {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.1);
+                opacity: 0.8;
+            }
+        }
+
+        .animate-aura {
+            animation: aura-glow 3s infinite;
+        }
+
+        @keyframes aura-glow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 20px 10px rgba(255, 105, 180, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 0 30px 15px rgba(147, 112, 219, 0.4);
+            }
+        }
+
+        .animate-color-rotate {
+            animation: color-rotate 4s linear infinite;
+        }
+
+        @keyframes color-rotate {
+            0% {
+                color: #ec4899;
+            }
+
+            /* pink-500 */
+            25% {
+                color: #8b5cf6;
+            }
+
+            /* purple-500 */
+            50% {
+                color: #3b82f6;
+            }
+
+            /* blue-500 */
+            75% {
+                color: #06b6d4;
+            }
+
+            /* cyan-500 */
+            100% {
+                color: #ec4899;
+            }
+
+            /* pink-500 */
+        }
+
+        /* Partículas animadas */
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            animation: float 6s infinite linear;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0) translateX(0);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 1;
+            }
+
+            90% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(-100px) translateX(20px);
+                opacity: 0;
+            }
+        }
     </style>
+    <script>
+        // =============================
+        // Funciones para el modal de triaje
+        // =============================
+        function abrirModalTriaje() {
+            console.log('Abriendo modal de triaje...');
+            const modal = document.getElementById('modalTriaje');
+            if (modal) {
+                modal.classList.remove('hidden');
+            }
+
+            const textarea = document.getElementById('descripcion_sintomatologia');
+            if (textarea) {
+                textarea.focus();
+            }
+        }
+
+        function cerrarModalTriaje() {
+            const modal = document.getElementById('modalTriaje');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+
+            const form = document.getElementById('formTriajeDashboard');
+            if (form) {
+                form.reset();
+            }
+
+            const charCount = document.getElementById('charCountTriaje');
+            if (charCount) {
+                charCount.textContent = '0 caracteres';
+                charCount.className = 'text-sm font-medium text-gray-600';
+            }
+        }
+
+        // =============================
+        // Inicialización cuando el DOM está listo
+        // =============================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM cargado, inicializando event listeners...');
+
+            // Contador de caracteres - SOLO si existe el textarea
+            const textarea = document.getElementById('descripcion_sintomatologia');
+            if (textarea) {
+                textarea.addEventListener('input', function() {
+                    const length = this.value.length;
+                    const charCount = document.getElementById('charCountTriaje');
+                    if (charCount) {
+                        charCount.textContent = length + ' caracteres';
+
+                        const submitBtn = document.getElementById('submitTriajeBtn');
+                        if (submitBtn) {
+                            if (length < 50) {
+                                charCount.className = 'text-sm font-medium text-red-600';
+                                submitBtn.disabled = true;
+                            } else if (length < 100) {
+                                charCount.className = 'text-sm font-medium text-yellow-600';
+                                submitBtn.disabled = false;
+                            } else {
+                                charCount.className = 'text-sm font-medium text-green-600';
+                                submitBtn.disabled = false;
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Manejo del formulario de triaje - CON MEJORES VERIFICACIONES
+            const form = document.getElementById('formTriajeDashboard');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    console.log('Formulario enviado...');
+
+                    const descripcion = document.getElementById('descripcion_sintomatologia')?.value
+                    .trim() || '';
+
+                    if (descripcion.length < 50) {
+                        alert(
+                            'Por favor, describe tus síntomas con al menos 50 caracteres para un análisis preciso.');
+                        return;
+                    }
+
+                    // OBTENER EL TOKEN CSRF DE FORMA SEGURA
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute(
+                        'content');
+                    if (!csrfToken) {
+                        console.error('No se encontró el token CSRF');
+                        alert('Error de seguridad. Por favor, recarga la página.');
+                        return;
+                    }
+
+                    const submitBtn = document.getElementById('submitTriajeBtn');
+                    const submitText = document.getElementById('submitTriajeText');
+                    const loadingSpinner = document.getElementById('loadingTriajeSpinner');
+
+                    if (submitText) submitText.textContent = 'Analizando y buscando profesional...';
+                    if (loadingSpinner) loadingSpinner.classList.remove('hidden');
+                    if (submitBtn) submitBtn.disabled = true;
+
+                    const formData = new FormData(this);
+
+                    // =============================
+                    // Envío AJAX del formulario CON TIMEOUT
+                    // =============================
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos timeout
+
+                    fetch('{{ route('triaje.procesar.matching') }}', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json'
+                            },
+                            body: formData,
+                            signal: controller.signal
+                        })
+                        .then(response => {
+                            clearTimeout(timeoutId);
+
+                            if (!response.ok) {
+                                return response.text().then(text => {
+                                    throw new Error(`HTTP ${response.status}: ${text}`);
+                                });
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log('Respuesta recibida:', data);
+
+                            if (data.success) {
+                                cerrarModalTriaje();
+                                mostrarResultadoMatching(data);
+                            } else {
+                                throw new Error(data.message || 'Error en el proceso de matching');
+                            }
+                        })
+                        .catch(error => {
+                            clearTimeout(timeoutId);
+                            console.error('Error completo:', error);
+
+                            let mensajeError = 'Error al procesar el triaje. ';
+
+                            if (error.name === 'AbortError') {
+                                mensajeError +=
+                                    'La solicitud tardó demasiado tiempo. Por favor, intenta nuevamente.';
+                            } else if (error.message.includes('HTTP 500')) {
+                                mensajeError +=
+                                    'Error interno del servidor. Por favor, contacta al administrador.';
+                            } else if (error.message.includes('HTTP 422')) {
+                                mensajeError +=
+                                    'Datos inválidos. Verifica que la descripción tenga al menos 50 caracteres.';
+                            } else {
+                                mensajeError += error.message;
+                            }
+
+                            alert(mensajeError);
+                            resetearBotonTriaje();
+                        });
+                });
+            } else {
+                console.warn('Formulario de triaje no encontrado');
+            }
+        });
+
+        // =============================
+        // Funciones auxiliares
+        // =============================
+        function resetearBotonTriaje() {
+            console.log('Reseteando botón...');
+
+            const submitText = document.getElementById('submitTriajeText');
+            const loadingSpinner = document.getElementById('loadingTriajeSpinner');
+            const submitBtn = document.getElementById('submitTriajeBtn');
+
+            if (submitText) submitText.textContent = 'Iniciar Matching';
+            if (loadingSpinner) loadingSpinner.classList.add('hidden');
+            if (submitBtn) submitBtn.disabled = false;
+        }
+
+        // =============================
+        // Mostrar resultado del matching
+        // =============================
+        function mostrarResultadoMatching(data) {
+            console.log('Mostrando resultado:', data);
+
+            const contenido = document.getElementById('contenidoResultadoMatching');
+            if (!contenido) {
+                console.error('Elemento contenidoResultadoMatching no encontrado');
+                return;
+            }
+
+            if (data.match_encontrado && data.profesional) {
+                // MATCH EXITOSO
+                const palabrasClave = data.profesional.palabras_clave_especialidad || [];
+                const palabrasHTML = palabrasClave.slice(0, 5).map(palabra =>
+                    `<span class="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">${palabra}</span>`
+                ).join('');
+
+                contenido.innerHTML = `
+                    <div class="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-t-lg">
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-check text-white text-2xl"></i>
+                            </div>
+                            <h3 class="text-2xl font-bold">¡Match Encontrado!</h3>
+                            <p class="text-green-100 mt-2">Hemos encontrado un profesional altamente compatible contigo</p>
+                        </div>
+                    </div>
+                    
+                    <div class="p-6">
+                        <!-- Información del Profesional -->
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                            <div class="flex items-center">
+                                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                                    <i class="fas fa-user-md text-green-600 text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-gray-800 text-lg">${data.profesional.usuario?.nombre || ''} ${data.profesional.usuario?.apellido || ''}</h4>
+                                    <p class="text-green-600 font-semibold capitalize">${data.profesional.especialidad_principal || ''}</p>
+                                    <div class="flex items-center mt-1">
+                                        <span class="bg-green-500 text-white px-2 py-1 rounded text-sm font-bold">
+                                            ${data.puntaje_compatibilidad || 0}% Compatibilidad
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+        
+                        <!-- Detalles del Matching -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <h5 class="font-semibold text-blue-800 mb-2">📊 Factores de Compatibilidad</h5>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span>Coincidencia de síntomas:</span>
+                                        <span class="font-semibold">${data.analisis_sintomas?.total_palabras_clave || 0} encontrados</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Nivel de urgencia:</span>
+                                        <span class="font-semibold capitalize">${data.analisis_sintomas?.nivel_urgencia || 'bajo'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-purple-50 p-4 rounded-lg">
+                                <h5 class="font-semibold text-purple-800 mb-2">🎯 Especialización</h5>
+                                <div class="flex flex-wrap gap-1">
+                                    ${palabrasHTML || '<span class="text-gray-500 text-xs">No hay palabras clave</span>'}
+                                </div>
+                            </div>
+                        </div>
+        
+                        <!-- Acciones -->
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button onclick="aceptarMatch(${data.profesional.id})" 
+                                    class="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-semibold transition duration-200 flex items-center justify-center">
+                                <i class="fas fa-check mr-2"></i>Aceptar Profesional
+                            </button>
+                            <button onclick="cerrarModalResultado()" 
+                                    class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-semibold transition duration-200 flex items-center justify-center">
+                                <i class="fas fa-times mr-2"></i>Rechazar
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // NO HAY MATCH
+                contenido.innerHTML = `
+                    <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white p-6 rounded-t-lg">
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-search text-white text-2xl"></i>
+                            </div>
+                            <h3 class="text-2xl font-bold">Buscando el Profesional Ideal</h3>
+                            <p class="text-yellow-100 mt-2">Estamos analizando tu caso para encontrar la mejor opción</p>
+                        </div>
+                    </div>
+                    
+                    <div class="p-6 text-center">
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                            <h4 class="font-semibold text-yellow-800 mb-2">📋 Análisis Realizado</h4>
+                            <div class="space-y-1 text-sm text-yellow-700">
+                                <div>Síntomas detectados: ${data.analisis_sintomas?.sintomas_detectados?.length || 0}</div>
+                                <div>Palabras clave: ${data.analisis_sintomas?.total_palabras_clave || 0}</div>
+                                <div>Nivel de urgencia: <span class="capitalize">${data.analisis_sintomas?.nivel_urgencia || 'bajo'}</span></div>
+                            </div>
+                        </div>
+                        
+                        <p class="text-gray-600 mb-6">
+                            Actualmente no tenemos un match perfecto disponible, pero estamos trabajando 
+                            para encontrar al profesional más adecuado para ti.
+                        </p>
+                        
+                        <div class="flex gap-3 justify-center">
+                            <button onclick="cerrarModalResultado()" 
+                                    class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold">
+                                <i class="fas fa-redo mr-2"></i>Intentar Más Tarde
+                            </button>
+                            <button onclick="contactarSoporte()" 
+                                    class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold">
+                                <i class="fas fa-headset mr-2"></i>Contactar Soporte
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Mostrar modal de resultados
+            const modalResultado = document.getElementById('modalResultadoMatching');
+            if (modalResultado) {
+                modalResultado.classList.remove('hidden');
+            }
+        }
+
+        // =============================
+        // Otras funciones del modal de resultado
+        // =============================
+        function cerrarModalResultado() {
+            const modalResultado = document.getElementById('modalResultadoMatching');
+            if (modalResultado) {
+                modalResultado.classList.add('hidden');
+            }
+            setTimeout(() => location.reload(), 300);
+        }
+
+        function aceptarMatch(profesionalId) {
+            if (!profesionalId) {
+                alert('Error: ID de profesional no válido');
+                return;
+            }
+
+            fetch(`/matching/aceptar/${profesionalId}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ ' + data.message);
+                        cerrarModalResultado();
+                        location.reload();
+                    } else {
+                        alert('❌ ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al aceptar match:', error);
+                    alert('Error al aceptar el match. Por favor, intenta nuevamente.');
+                });
+        }
+
+        function contactarSoporte() {
+            alert('📞 Por favor, contacta a nuestro equipo de soporte para asistencia personalizada.');
+            cerrarModalResultado();
+        }
+
+        // =============================
+        // Cerrar modales al hacer clic fuera
+        // =============================
+        window.onclick = function(event) {
+            const modalTriaje = document.getElementById('modalTriaje');
+            const modalResultado = document.getElementById('modalResultadoMatching');
+
+            if (event.target == modalTriaje) {
+                cerrarModalTriaje();
+            }
+            if (event.target == modalResultado) {
+                cerrarModalResultado();
+            }
+        }
+    </script>
 </head>
 
 <body class="gradient-bg min-h-screen">
@@ -135,97 +608,161 @@
             </div>
         </div>
 
-        <!-- Modal de Triaje Integrado -->
+        <!-- Modal de Triaje Integrado - VERSIÓN MEJORADA CON CORAZÓN -->
         <div id="modalTriaje" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
             <div
                 class="relative top-10 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-2/3 xl:w-1/2 shadow-lg rounded-md bg-white">
                 <div class="mt-3">
                     <!-- Header del Modal -->
-                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-t-lg">
-                        <h3 class="text-2xl font-bold text-center">🎯 Triaje Inicial</h3>
-                        <p class="text-blue-100 text-center mt-2">
-                            Describe cómo te sientes para encontrar al profesional más adecuado
-                        </p>
+                    <div
+                        class="bg-gradient-to-r from-pink-500 to-purple-600 text-white p-6 rounded-t-lg relative overflow-hidden">
+                        <!-- Efecto de partículas -->
+                        <div id="particles" class="absolute inset-0 opacity-20"></div>
+
+                        <div class="relative z-10">
+                            <h3 class="text-2xl font-bold text-center">🎯 Encontrando tu Profesional Ideal</h3>
+                            <p class="text-pink-100 text-center mt-2">
+                                Describe cómo te sientes para conectar con el profesional perfecto
+                            </p>
+                        </div>
                     </div>
 
                     <div class="p-6">
-                        <!-- Formulario de Triaje -->
-                        <form id="formTriajeDashboard" method="POST" action="{{ route('triaje.procesar.matching') }}">
-                            @csrf
-                            <!-- Área de texto mejorada -->
-                            <div class="mb-6">
-                                <label for="descripcion_sintomatologia"
-                                    class="block text-sm font-medium text-gray-700 mb-3">
-                                    <span class="text-red-500">*</span> Describe tus síntomas y cómo te has estado
-                                    sintiendo:
-                                </label>
-                                <textarea id="descripcion_sintomatologia" name="descripcion_sintomatologia" rows="8"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 form-input"
-                                    placeholder="Sé lo más específico posible. Por ejemplo:
+                        <!-- Estado inicial: Formulario -->
+                        <div id="formularioTriaje">
+                            <form id="formTriajeDashboard" method="POST"
+                                action="{{ route('triaje.procesar.matching') }}">
+                                @csrf
+
+                                <!-- Área de texto mejorada -->
+                                <div class="mb-6">
+                                    <label for="descripcion_sintomatologia"
+                                        class="block text-sm font-medium text-gray-700 mb-3">
+                                        <span class="text-red-500">*</span> Describe tus síntomas y cómo te has estado
+                                        sintiendo:
+                                    </label>
+                                    <textarea id="descripcion_sintomatologia" name="descripcion_sintomatologia" rows="8"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition duration-200 form-input"
+                                        placeholder="Sé lo más específico posible. Por ejemplo:
 • Qué síntomas o sensaciones experimentas
-• Cuándo comenzaron y con qué frecuencia
-• Situaciones que los desencadenan  
+• Cuándo comenzaron y con qué frecuencia  
+• Situaciones que los desencadenan
 • Cómo afectan tu vida diaria
 • Cualquier otro detalle importante
 
 Ejemplo: 'Últimamente me he sentido muy ansioso, especialmente por las noches. Tengo problemas para dormir y me despierto con palpitaciones. En el trabajo me siento abrumado y tengo dificultad para concentrarme...'"
-                                    required></textarea>
-                                <div class="flex justify-between items-center mt-2">
-                                    <p class="text-sm text-gray-500">
-                                        Mínimo 50 caracteres para un análisis preciso
-                                    </p>
-                                    <span id="charCountTriaje" class="text-sm font-medium text-gray-600">0
-                                        caracteres</span>
-                                </div>
-                            </div>
-
-                            <!-- Selector de Clínica (Opcional) -->
-                            <div class="mb-6">
-                                <label for="clinica_id" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Preferencia de clínica (opcional):
-                                </label>
-                                <select id="clinica_id" name="clinica_id"
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="">Cualquier clínica disponible</option>
-                                    @foreach ($clinicasActivas ?? [] as $clinica)
-                                        <option value="{{ $clinica->id_clinica }}">{{ $clinica->nombre }} -
-                                            {{ $clinica->ciudad }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <!-- Información de Confidencialidad -->
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                                <div class="flex items-start">
-                                    <i class="fas fa-shield-alt text-blue-500 text-xl mt-1 mr-4"></i>
-                                    <div>
-                                        <h4 class="font-semibold text-blue-800 mb-1">Tu privacidad está protegida</h4>
-                                        <p class="text-blue-700 text-sm">
-                                            Toda la información que proporciones está encriptada y solo será accesible
-                                            para los profesionales de salud mental autorizados.
+                                        required></textarea>
+                                    <div class="flex justify-between items-center mt-2">
+                                        <p class="text-sm text-gray-500">
+                                            Mínimo 50 caracteres para un análisis preciso
                                         </p>
+                                        <span id="charCountTriaje" class="text-sm font-medium text-gray-600">0
+                                            caracteres</span>
                                     </div>
                                 </div>
-                            </div>
 
-                            <!-- Botones de Acción -->
-                            <div class="flex flex-col sm:flex-row gap-4 justify-end">
-                                <button type="button" onclick="cerrarModalTriaje()"
-                                    class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition duration-200 text-center">
-                                    <i class="fas fa-arrow-left mr-2"></i>Cancelar
-                                </button>
-                                <button type="submit" id="submitTriajeBtn"
-                                    class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-blue-700 transition duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center">
-                                    <i class="fas fa-paper-plane mr-2"></i>
-                                    <span id="submitTriajeText">Iniciar Matching</span>
-                                    <div id="loadingTriajeSpinner" class="hidden ml-2">
-                                        <div
-                                            class="spinner border-2 border-white border-t-transparent rounded-full w-5 h-5 animate-spin">
+                                <!-- Selector de Clínica (Opcional) -->
+                                <div class="mb-6">
+                                    <label for="clinica_id" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Preferencia de clínica (opcional):
+                                    </label>
+                                    <select id="clinica_id" name="clinica_id"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                                        <option value="">Cualquier clínica disponible</option>
+                                        @foreach ($clinicasActivas ?? [] as $clinica)
+                                            <option value="{{ $clinica->id_clinica }}">{{ $clinica->nombre }} -
+                                                {{ $clinica->ciudad }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <!-- Información de Confidencialidad -->
+                                <div class="bg-pink-50 border border-pink-200 rounded-lg p-4 mb-6">
+                                    <div class="flex items-start">
+                                        <i class="fas fa-heart text-pink-500 text-xl mt-1 mr-4"></i>
+                                        <div>
+                                            <h4 class="font-semibold text-pink-800 mb-1">Tu bienestar es nuestra
+                                                prioridad</h4>
+                                            <p class="text-pink-700 text-sm">
+                                                Estamos aquí para encontrar al profesional que mejor se adapte a tus
+                                                necesidades.
+                                                Toda tu información está protegida y es confidencial.
+                                            </p>
                                         </div>
                                     </div>
-                                </button>
+                                </div>
+
+                                <!-- Botones de Acción -->
+                                <div class="flex flex-col sm:flex-row gap-4 justify-end">
+                                    <button type="button" onclick="cerrarModalTriaje()"
+                                        class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition duration-200 text-center">
+                                        <i class="fas fa-arrow-left mr-2"></i>Cancelar
+                                    </button>
+                                    <button type="submit" id="submitTriajeBtn"
+                                        class="px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg font-semibold hover:from-pink-600 hover:to-purple-700 transition duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center">
+                                        <i class="fas fa-heart mr-2"></i>
+                                        <span id="submitTriajeText">Buscar Mi Profesional</span>
+                                        <div id="loadingTriajeSpinner" class="hidden ml-2">
+                                            <div
+                                                class="spinner border-2 border-white border-t-transparent rounded-full w-5 h-5 animate-spin">
+                                            </div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Estado de búsqueda: Animación del corazón -->
+                        <div id="animacionBusqueda" class="hidden">
+                            <div class="text-center py-8">
+                                <!-- Corazón animado -->
+                                <div class="relative inline-block mb-6">
+                                    <div id="corazonAnimado" class="text-6xl text-pink-500 animate-pulse">
+                                        💖
+                                    </div>
+                                    <div id="aura" class="absolute inset-0 rounded-full animate-ping opacity-75">
+                                    </div>
+                                </div>
+
+                                <h3 class="text-2xl font-bold text-gray-800 mb-4">
+                                    Buscando tu match perfecto...
+                                </h3>
+
+                                <p class="text-gray-600 mb-6">
+                                    Estamos analizando tu descripción y buscando entre nuestros profesionales
+                                    especializados para encontrar la mejor conexión para ti.
+                                </p>
+
+                                <!-- Indicador de progreso animado -->
+                                <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
+                                    <div id="barraProgreso"
+                                        class="bg-gradient-to-r from-blue-400 to-purple-500 h-2 rounded-full transition-all duration-1000 ease-out"
+                                        style="width: 0%"></div>
+                                </div>
+
+                                <div class="text-sm text-gray-500">
+                                    <span id="estadoBusqueda">Analizando tu descripción...</span>
+                                </div>
+
+                                <!-- Estadísticas en tiempo real -->
+                                <div class="grid grid-cols-3 gap-4 mt-6 text-center">
+                                    <div class="bg-blue-50 p-3 rounded-lg">
+                                        <div id="contadorProfesionales" class="text-lg font-bold text-blue-600">0
+                                        </div>
+                                        <div class="text-blue-700 text-xs">Profesionales</div>
+                                    </div>
+                                    <div class="bg-purple-50 p-3 rounded-lg">
+                                        <div id="contadorCoincidencias" class="text-lg font-bold text-purple-600">0
+                                        </div>
+                                        <div class="text-purple-700 text-xs">Coincidencias</div>
+                                    </div>
+                                    <div class="bg-pink-50 p-3 rounded-lg">
+                                        <div id="contadorAnalisis" class="text-lg font-bold text-pink-600">0%</div>
+                                        <div class="text-pink-700 text-xs">Análisis</div>
+                                    </div>
+                                </div>
                             </div>
-                        </form>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -468,268 +1005,5 @@ Ejemplo: 'Últimamente me he sentido muy ansioso, especialmente por las noches. 
         </div>
     </nav>
 </body>
-<script>
-    // Funciones para el modal de triaje
-    function abrirModalTriaje() {
-        document.getElementById('modalTriaje').classList.remove('hidden');
-        document.getElementById('descripcion_sintomatologia').focus();
-    }
-
-    function cerrarModalTriaje() {
-        document.getElementById('modalTriaje').classList.add('hidden');
-        document.getElementById('formTriajeDashboard').reset();
-        document.getElementById('charCountTriaje').textContent = '0 caracteres';
-        document.getElementById('charCountTriaje').className = 'text-sm font-medium text-gray-600';
-    }
-
-    // Contador de caracteres para el triaje
-    document.getElementById('descripcion_sintomatologia').addEventListener('input', function() {
-        const length = this.value.length;
-        const charCount = document.getElementById('charCountTriaje');
-        charCount.textContent = length + ' caracteres';
-
-        // Validación visual
-        if (length < 50) {
-            charCount.className = 'text-sm font-medium text-red-600';
-            document.getElementById('submitTriajeBtn').disabled = true;
-        } else if (length < 100) {
-            charCount.className = 'text-sm font-medium text-yellow-600';
-            document.getElementById('submitTriajeBtn').disabled = false;
-        } else {
-            charCount.className = 'text-sm font-medium text-green-600';
-            document.getElementById('submitTriajeBtn').disabled = false;
-        }
-    });
-
-    // Manejo del formulario de triaje
-    document.getElementById('formTriajeDashboard').addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const descripcion = document.getElementById('descripcion_sintomatologia').value.trim();
-
-        if (descripcion.length < 50) {
-            alert('Por favor, describe tus síntomas con al menos 50 caracteres para un análisis preciso.');
-            return;
-        }
-
-        // Mostrar loading
-        const submitBtn = document.getElementById('submitTriajeBtn');
-        const submitText = document.getElementById('submitTriajeText');
-        const loadingSpinner = document.getElementById('loadingTriajeSpinner');
-
-        submitText.textContent = 'Analizando y buscando profesional...';
-        loadingSpinner.classList.remove('hidden');
-        submitBtn.disabled = true;
-
-        // OBTENER EL TOKEN CSRF
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-        // Enviar formulario via AJAX
-        const formData = new FormData(this);
-
-        fetch('{{ route('triaje.procesar.matching') }}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken, // Usar el token obtenido
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                },
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Error en la respuesta del servidor');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    // Cerrar modal de triaje
-                    cerrarModalTriaje();
-
-                    // Mostrar resultados del matching
-                    mostrarResultadoMatching(data);
-                } else {
-                    alert('Error: ' + (data.message || 'Error en el proceso de matching'));
-                    resetearBotonTriaje();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error al procesar el triaje. Por favor, intenta nuevamente.');
-                resetearBotonTriaje();
-            });
-    });
-
-    function resetearBotonTriaje() {
-        document.getElementById('submitTriajeText').textContent = 'Iniciar Matching';
-        document.getElementById('loadingTriajeSpinner').classList.add('hidden');
-        document.getElementById('submitTriajeBtn').disabled = false;
-    }
-
-    function mostrarResultadoMatching(data) {
-        const contenido = document.getElementById('contenidoResultadoMatching');
-
-        if (data.match_encontrado) {
-            // MATCH EXITOSO
-            contenido.innerHTML = `
-                <div class="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-t-lg">
-                    <div class="text-center">
-                        <div class="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i class="fas fa-check text-white text-2xl"></i>
-                        </div>
-                        <h3 class="text-2xl font-bold">¡Match Encontrado!</h3>
-                        <p class="text-green-100 mt-2">Hemos encontrado un profesional altamente compatible contigo</p>
-                    </div>
-                </div>
-                
-                <div class="p-6">
-                    <!-- Información del Profesional -->
-                    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                        <div class="flex items-center">
-                            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mr-4">
-                                <i class="fas fa-user-md text-green-600 text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-gray-800 text-lg">${data.profesional.usuario.nombre} ${data.profesional.usuario.apellido}</h4>
-                                <p class="text-green-600 font-semibold capitalize">${data.profesional.especialidad_principal}</p>
-                                <div class="flex items-center mt-1">
-                                    <span class="bg-green-500 text-white px-2 py-1 rounded text-sm font-bold">
-                                        ${data.puntaje_compatibilidad}% Compatibilidad
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-    
-                    <!-- Detalles del Matching -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        <div class="bg-blue-50 p-4 rounded-lg">
-                            <h5 class="font-semibold text-blue-800 mb-2">📊 Factores de Compatibilidad</h5>
-                            <div class="space-y-2 text-sm">
-                                <div class="flex justify-between">
-                                    <span>Coincidencia de síntomas:</span>
-                                    <span class="font-semibold">${data.analisis_sintomas.total_palabras_clave} encontrados</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>Nivel de urgencia:</span>
-                                    <span class="font-semibold capitalize">${data.analisis_sintomas.nivel_urgencia}</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="bg-purple-50 p-4 rounded-lg">
-                            <h5 class="font-semibold text-purple-800 mb-2">🎯 Especialización</h5>
-                            <div class="flex flex-wrap gap-1">
-                                ${data.profesional.palabras_clave_especialidad ? data.profesional.palabras_clave_especialidad.slice(0, 5).map(palabra => 
-                                    `<span class="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">${palabra}</span>`
-                                ).join('') : ''}
-                            </div>
-                        </div>
-                    </div>
-    
-                    <!-- Acciones -->
-                    <div class="flex flex-col sm:flex-row gap-3">
-                        <button onclick="aceptarMatch(${data.profesional.id})" 
-                                class="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-semibold transition duration-200 flex items-center justify-center">
-                            <i class="fas fa-check mr-2"></i>Aceptar Profesional
-                        </button>
-                        <button onclick="cerrarModalResultado()" 
-                                class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-semibold transition duration-200 flex items-center justify-center">
-                            <i class="fas fa-times mr-2"></i>Rechazar
-                        </button>
-                    </div>
-                </div>
-            `;
-        } else {
-            // NO HAY MATCH
-            contenido.innerHTML = `
-                <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white p-6 rounded-t-lg">
-                    <div class="text-center">
-                        <div class="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i class="fas fa-search text-white text-2xl"></i>
-                        </div>
-                        <h3 class="text-2xl font-bold">Buscando el Profesional Ideal</h3>
-                        <p class="text-yellow-100 mt-2">Estamos analizando tu caso para encontrar la mejor opción</p>
-                    </div>
-                </div>
-                
-                <div class="p-6 text-center">
-                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                        <h4 class="font-semibold text-yellow-800 mb-2">📋 Análisis Realizado</h4>
-                        <div class="space-y-1 text-sm text-yellow-700">
-                            <div>Síntomas detectados: ${data.analisis_sintomas.sintomas_detectados.length}</div>
-                            <div>Palabras clave: ${data.analisis_sintomas.total_palabras_clave}</div>
-                            <div>Nivel de urgencia: <span class="capitalize">${data.analisis_sintomas.nivel_urgencia}</span></div>
-                        </div>
-                    </div>
-                    
-                    <p class="text-gray-600 mb-6">
-                        Actualmente no tenemos un match perfecto disponible, pero estamos trabajando 
-                        para encontrar al profesional más adecuado para ti.
-                    </p>
-                    
-                    <div class="flex gap-3 justify-center">
-                        <button onclick="cerrarModalResultado()" 
-                                class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold">
-                            <i class="fas fa-redo mr-2"></i>Intentar Más Tarde
-                        </button>
-                        <button onclick="contactarSoporte()" 
-                                class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold">
-                            <i class="fas fa-headset mr-2"></i>Contactar Soporte
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Mostrar modal de resultados
-        document.getElementById('modalResultadoMatching').classList.remove('hidden');
-    }
-
-    function cerrarModalResultado() {
-        document.getElementById('modalResultadoMatching').classList.add('hidden');
-        // Recargar la página para actualizar matches pendientes
-        setTimeout(() => location.reload(), 300);
-    }
-
-    function aceptarMatch(profesionalId) {
-        fetch(`/matching/aceptar/${profesionalId}`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('✅ ' + data.message);
-                    cerrarModalResultado();
-                    location.reload();
-                } else {
-                    alert('❌ ' + data.message);
-                }
-            });
-    }
-
-    function contactarSoporte() {
-        alert('📞 Por favor, contacta a nuestro equipo de soporte para asistencia personalizada.');
-        cerrarModalResultado();
-    }
-
-    // Cerrar modales al hacer click fuera
-    window.onclick = function(event) {
-        const modalTriaje = document.getElementById('modalTriaje');
-        const modalResultado = document.getElementById('modalResultadoMatching');
-
-        if (event.target == modalTriaje) {
-            cerrarModalTriaje();
-        }
-        if (event.target == modalResultado) {
-            cerrarModalResultado();
-        }
-    }
-</script>
 
 </html>

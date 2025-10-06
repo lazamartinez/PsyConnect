@@ -271,6 +271,46 @@
                     </div>
                 @endif
 
+                <!-- Agregar después de la sección de Configuración de Matching -->
+                <div class="bg-white rounded-lg shadow p-6 mb-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">
+                                <i class="fas fa-bolt text-yellow-500 mr-2"></i>
+                                Disponibilidad para Matching
+                            </h3>
+                            <p class="text-gray-600 text-sm">
+                                Cuando estés disponible, los pacientes podrán encontrarte a través del sistema de
+                                matching automático.
+                            </p>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="mr-3 text-sm font-medium text-gray-700" id="disponibilidadText">
+                                {{ $profesional->disponibilidad_inmediata ? 'Disponible' : 'No Disponible' }}
+                            </span>
+                            <button id="toggleDisponibilidad" type="button"
+                                class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 {{ $profesional->disponibilidad_inmediata ? 'bg-green-500' : 'bg-gray-300' }}"
+                                role="switch"
+                                aria-checked="{{ $profesional->disponibilidad_inmediata ? 'true' : 'false' }}">
+                                <span class="sr-only">Disponibilidad inmediata</span>
+                                <span aria-hidden="true"
+                                    class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {{ $profesional->disponibilidad_inmediata ? 'translate-x-5' : 'translate-x-0' }}"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Estadísticas de disponibilidad -->
+                    <div class="mt-4 grid grid-cols-2 gap-4 text-sm">
+                        <div class="text-center p-3 bg-blue-50 rounded-lg">
+                            <div class="text-lg font-bold text-blue-600">{{ $pacientesActivos }}</div>
+                            <div class="text-blue-700">Pacientes Activos</div>
+                        </div>
+                        <div class="text-center p-3 bg-green-50 rounded-lg">
+                            <div class="text-lg font-bold text-green-600">{{ $coincidenciasMes }}</div>
+                            <div class="text-green-700">Matches este Mes</div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Configuración de Perfil y Matching -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -645,6 +685,87 @@
                     btnGuardar.innerHTML = '<i class="fas fa-save mr-2"></i>Guardar Selección';
                     btnGuardar.disabled = false;
                 });
+        }
+
+        document.getElementById('toggleDisponibilidad').addEventListener('click', function() {
+            const isAvailable = this.getAttribute('aria-checked') === 'true';
+            const newState = !isAvailable;
+
+            // Mostrar loading
+            const button = this;
+            const originalBg = button.className;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mx-auto my-1"></i>';
+            button.disabled = true;
+
+            fetch('/profesional/disponibilidad', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        disponibilidad: newState
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Actualizar UI
+                        button.setAttribute('aria-checked', newState.toString());
+                        button.className = originalBg.replace(
+                            newState ? 'bg-gray-300' : 'bg-green-500',
+                            newState ? 'bg-green-500' : 'bg-gray-300'
+                        );
+                        button.querySelector('span').className =
+                            `pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${newState ? 'translate-x-5' : 'translate-x-0'}`;
+
+                        document.getElementById('disponibilidadText').textContent =
+                            newState ? 'Disponible' : 'No Disponible';
+
+                        // Mostrar notificación
+                        showNotification(
+                            `Disponibilidad ${newState ? 'activada' : 'desactivada'} correctamente`,
+                            'success');
+                    } else {
+                        throw new Error(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error al actualizar disponibilidad', 'error');
+                    // Restaurar estado anterior
+                    button.innerHTML =
+                        '<span aria-hidden="true" class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>';
+                    button.disabled = false;
+                })
+                .finally(() => {
+                    // Restaurar botón
+                    setTimeout(() => {
+                        button.innerHTML =
+                            '<span aria-hidden="true" class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>';
+                        button.disabled = false;
+                    }, 1000);
+                });
+        });
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg text-white ${
+        type === 'success' ? 'bg-green-500' : 
+        type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+    }`;
+            notification.innerHTML = `
+        <div class="flex items-center">
+            <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : 'info'} mr-2"></i>
+            <span>${message}</span>
+        </div>
+    `;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
         }
     </script>
 </body>

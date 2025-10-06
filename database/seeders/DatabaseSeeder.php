@@ -13,6 +13,9 @@ class DatabaseSeeder extends Seeder
             ClinicasSeeder::class,
             TriajeInicialSeeder::class,
             PalabrasClaveSeeder::class,
+            ActualizarConfiguracionMatchingSeeder::class,
+            MejorarPalabrasClaveProfesionalesSeeder::class,
+            AsignarPalabrasClaveProfesionalesSeeder::class,
         ]);
     }
 }

@@ -24,6 +24,8 @@ class MatchingController extends Controller
 
     public function procesarTriajeYMatching(Request $request)
     {
+        Log::info("🎯 ========== INICIANDO PROCESO DE MATCHING ==========");
+
         $request->validate([
             'descripcion_sintomatologia' => 'required|string|min:50|max:1000',
             'clinica_id' => 'nullable|exists:clinicas,id_clinica'
@@ -32,38 +34,51 @@ class MatchingController extends Controller
         $paciente = Auth::user()->paciente;
         $clinicaId = $request->clinica_id;
 
-        Log::info("🎯 INICIANDO PROCESO DE MATCHING");
-        Log::info("Paciente: {$paciente->id}, Clínica: {$clinicaId}");
-        Log::info("Texto paciente: " . substr($request->descripcion_sintomatologia, 0, 200));
+        Log::info("📋 Datos recibidos:", [
+            'paciente_id' => $paciente->id,
+            'clinica_id' => $clinicaId,
+            'descripcion_longitud' => strlen($request->descripcion_sintomatologia),
+            'descripcion_preview' => substr($request->descripcion_sintomatologia, 0, 100) . '...'
+        ]);
 
         try {
+            Log::info("🔄 Creando servicio de matching...");
             $this->matchingService = new MatchingService($clinicaId);
+
+            Log::info("🔍 Procesando triaje completo...");
             $resultado = $this->matchingService->procesarTriajeCompleto(
                 $paciente,
                 $request->descripcion_sintomatologia
             );
 
-            Log::info("🎯 RESULTADO MATCHING: " . ($resultado['match_encontrado'] ? 'SI' : 'NO'));
-            if ($resultado['match_encontrado']) {
-                Log::info("🎯 PROFESIONAL ASIGNADO: {$resultado['profesional']->id} - {$resultado['puntaje_compatibilidad']}%");
-            }
+            Log::info("✅ RESULTADO MATCHING:", [
+                'match_encontrado' => $resultado['match_encontrado'] ?? false,
+                'profesional_id' => $resultado['profesional']->id ?? 'null',
+                'puntaje' => $resultado['puntaje_compatibilidad'] ?? 0,
+                'especialidad' => $resultado['especialidad_recomendada'] ?? 'null'
+            ]);
 
             return response()->json([
                 'success' => true,
-                'match_encontrado' => $resultado['match_encontrado'],
-                'profesional' => $resultado['profesional'],
-                'puntaje_compatibilidad' => $resultado['puntaje_compatibilidad'],
-                'especialidad_recomendada' => $resultado['especialidad_recomendada'],
-                'analisis_sintomas' => $resultado['analisis_sintomas'],
-                'configuracion_utilizada' => $resultado['triaje']->configuracion_utilizada,
+                'match_encontrado' => $resultado['match_encontrado'] ?? false,
+                'profesional' => $resultado['profesional'] ?? null,
+                'puntaje_compatibilidad' => $resultado['puntaje_compatibilidad'] ?? 0,
+                'especialidad_recomendada' => $resultado['especialidad_recomendada'] ?? 'psicologo',
+                'analisis_sintomas' => $resultado['analisis_sintomas'] ?? [],
+                'configuracion_utilizada' => $resultado['triaje']->configuracion_utilizada ?? [],
                 'redirect_url' => route('dashboard')
             ]);
         } catch (\Exception $e) {
-            Log::error('❌ ERROR en matching: ' . $e->getMessage());
-            Log::error($e->getTraceAsString());
+            Log::error('❌ ERROR CRÍTICO en matching: ' . $e->getMessage());
+            Log::error('📝 Stack trace: ' . $e->getTraceAsString());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error en el proceso de matching: ' . $e->getMessage()
+                'message' => 'Error interno del servidor: ' . $e->getMessage(),
+                'match_encontrado' => false,
+                'profesional' => null,
+                'puntaje_compatibilidad' => 0,
+                'analisis_sintomas' => []
             ], 500);
         }
     }

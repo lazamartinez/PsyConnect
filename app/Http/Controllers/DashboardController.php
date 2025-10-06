@@ -11,6 +11,7 @@ use App\Models\Paciente;
 use App\Models\TriajeInicial;
 use App\Models\ConfiguracionMatching;
 use App\Models\Cita;
+use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
@@ -70,6 +71,9 @@ class DashboardController extends Controller
             return redirect()->route('login')->with('error', 'Perfil profesional no encontrado.');
         }
 
+        $especialidadNormalizada = $this->normalizarEspecialidad($profesional->especialidad_principal);
+        Log::info("Buscando palabras clave para especialidad: {$profesional->especialidad_principal} -> {$especialidadNormalizada}");
+
         // Si está pendiente, mostrar vista especial
         if ($profesional->estado_verificacion === 'pendiente') {
             $clinica = $profesional->clinicas->first();
@@ -96,11 +100,13 @@ class DashboardController extends Controller
 
         // OBTENER PALABRAS CLAVE FILTRADAS POR ESPECIALIDAD DEL ADMIN
         $palabrasClaveSistema = \App\Models\PalabraClave::where('estado', true)
-            ->where('especialidad_recomendada', $profesional->especialidad_principal)
+            ->where('especialidad_recomendada', $especialidadNormalizada)
             ->orderBy('categoria')
             ->orderBy('palabra')
             ->get()
             ->groupBy('categoria');
+
+        Log::info("Palabras clave encontradas: " . $palabrasClaveSistema->flatten()->count());
 
         // Estadísticas con manejo de errores
         $pacientesActivos = $profesional->pacientes()
@@ -219,5 +225,24 @@ class DashboardController extends Controller
         $totalAsignaciones = $profesional->pacientes()->count();
         $aceptadas = $profesional->pacientes()->wherePivot('estado', 'activo')->count();
         return $totalAsignaciones > 0 ? round(($aceptadas / $totalAsignaciones) * 100, 1) : 0;
+    }
+
+    // AGREGAR ESTE MÉTODO PARA NORMALIZAR ESPECIALIDADES
+    private function normalizarEspecialidad($especialidad)
+    {
+        $especialidad = mb_strtolower(trim($especialidad));
+
+        $mapeo = [
+            'psicología' => 'psicologo',
+            'psicologo' => 'psicologo',
+            'psicólogo' => 'psicologo',
+            'psiquiatría' => 'psiquiatra',
+            'psiquiatra' => 'psiquiatra',
+            'nutrición' => 'nutricionista',
+            'nutricionista' => 'nutricionista',
+            'nutrición clínica' => 'nutricionista'
+        ];
+
+        return $mapeo[$especialidad] ?? $especialidad;
     }
 }

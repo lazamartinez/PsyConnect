@@ -3,8 +3,6 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use App\Http\Middleware\ProfesionalMiddleware;
-use App\Http\Middleware\AdminMiddleware; 
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,10 +13,17 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Registrar middlewares específicos de rutas
         $middleware->alias([
-            'profesional' => ProfesionalMiddleware::class,
-            'admin' => AdminMiddleware::class, 
+            'profesional' => \App\Http\Middleware\ProfesionalMiddleware::class,
+            'admin' => \App\Http\Middleware\AdminMiddleware::class,
+            'paciente' => \App\Http\Middleware\PacienteMiddleware::class,
+            'verificar.matching' => \App\Http\Middleware\VerificarSistemaMatching::class,
+        ]);
+        // Aplicar globalmente o a rutas específicas
+        $middleware->web(append: [
+            \App\Http\Middleware\VerificarSistemaMatching::class,
         ]);
     })
+
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })
