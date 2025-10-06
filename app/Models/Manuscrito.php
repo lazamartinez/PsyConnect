@@ -4,13 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class Manuscrito extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuids;
 
     protected $table = 'manuscritos';
     protected $primaryKey = 'id_manuscrito';
+    public $incrementing = false; // UUIDs no son autoincrement
+    protected $keyType = 'string';
 
     protected $fillable = [
         'paciente_id',
@@ -32,13 +35,13 @@ class Manuscrito extends Model
     // Relación con Paciente
     public function paciente()
     {
-        return $this->belongsTo(Paciente::class, 'paciente_id');
+        return $this->belongsTo(Paciente::class, 'paciente_id', 'id_paciente');
     }
 
     // Relación con Índice de Estado Anímico
     public function indiceEstadoAnimico()
     {
-        return $this->hasOne(IndiceEstadoAnimico::class, 'manuscrito_id');
+        return $this->hasOne(IndiceEstadoAnimico::class, 'manuscrito_id', 'id_manuscrito');
     }
 
     // Método para verificar si está procesado

@@ -65,6 +65,10 @@ class Usuario extends Authenticatable
     {
         return in_array($this->tipo_usuario, ['psicologo', 'psiquiatra', 'nutricionista']);
     }
+    public function esAdministrador()
+    {
+        return $this->tipo_usuario === 'administrador';
+    }
 
     // Método para nombre completo
     public function obtenerNombreCompleto()

@@ -4,13 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class Paciente extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuids;
 
     protected $table = 'pacientes';
     protected $primaryKey = 'id_paciente';
+    public $incrementing = false; // UUIDs no son autoincrement
+    protected $keyType = 'string';
 
     protected $fillable = [
         'usuario_id',
@@ -31,13 +34,29 @@ class Paciente extends Model
     // Relación con Manuscritos
     public function manuscritos()
     {
-        return $this->hasMany(Manuscrito::class, 'paciente_id');
+        return $this->hasMany(Manuscrito::class, 'paciente_id', 'id_paciente');
     }
 
     // Relación con Índices de Estado Anímico
     public function indicesEstadoAnimico()
     {
-        return $this->hasMany(IndiceEstadoAnimico::class, 'paciente_id');
+        return $this->hasMany(IndiceEstadoAnimico::class, 'paciente_id', 'id_paciente');
+    }
+
+    // Relación muchos a muchos con Profesionales
+    public function profesionales()
+    {
+        return $this->belongsToMany(
+            Profesional::class,
+            'profesional_paciente',
+            'paciente_id',          // columna en la tabla pivot que apunta a Paciente
+            'profesional_id'        // columna en la tabla pivot que apunta a Profesional
+        )->withPivot([
+            'fecha_asignacion',
+            'puntuacion_compatibilidad',
+            'estado',
+            'motivo_asignacion'
+        ])->withTimestamps();
     }
 
     // Método para calcular edad

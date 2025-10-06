@@ -9,9 +9,23 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('indices_estado_animico', function (Blueprint $table) {
-            $table->id('id_iea');
-            $table->foreignId('paciente_id')->constrained('pacientes', 'id_paciente');
-            $table->foreignId('manuscrito_id')->nullable()->constrained('manuscritos', 'id_manuscrito');
+            //UUID como clave primaria
+            $table->uuid('id_iea')->primary();
+
+            // Relaciones UUID con pacientes y manuscritos
+            $table->uuid('paciente_id');
+            $table->foreign('paciente_id')
+                  ->references('id_paciente')
+                  ->on('pacientes')
+                  ->onDelete('cascade');
+
+            $table->uuid('manuscrito_id')->nullable();
+            $table->foreign('manuscrito_id')
+                  ->references('id_manuscrito')
+                  ->on('manuscritos')
+                  ->onDelete('set null');
+
+            // Campos de datos
             $table->decimal('valor_numerico', 5, 2)->comment('Valor IEA entre 0-100');
             $table->enum('categoria_emotional', ['muy_bajo', 'bajo', 'neutral', 'alto', 'muy_alto']);
             $table->json('emociones_detectadas')->nullable();

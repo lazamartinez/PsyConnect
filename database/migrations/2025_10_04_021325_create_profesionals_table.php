@@ -9,12 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('profesionales', function (Blueprint $table) {
-            $table->id('id_profesional');
+            $table->uuid('id_profesional')->primary();
             $table->foreignId('usuario_id')->constrained('usuarios', 'id_usuario');
             $table->string('especialidad_principal');
             $table->string('matricula')->nullable();
             $table->string('institucion')->nullable();
-            $table->enum('estado_verificacion', ['verificado', 'pendiente', 'rechazado'])->default('pendiente');
+            $table->enum('estado_verificacion', ['aprobado', 'pendiente', 'rechazado'])->default('pendiente');
             $table->integer('anios_experiencia')->default(0);
             $table->text('bio')->nullable();
             $table->timestamps();

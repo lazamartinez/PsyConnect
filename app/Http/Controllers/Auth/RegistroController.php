@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Paciente;
 use App\Models\Profesional;
 use App\Models\Usuario;
+use App\Models\Clinica;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -14,17 +15,28 @@ use Illuminate\Validation\Rules;
 
 class RegistroController extends Controller
 {
+    /**
+     * Mostrar el formulario de registro
+     */
     public function mostrarFormularioRegistro()
     {
-        return view('auth.registro');
+        $clinicas = Clinica::where('estado', 'activa')
+            ->orderBy('nombre')
+            ->get();
+
+        $tipo_usuario = 'paciente';
+
+        return view('auth.registro', compact('clinicas', 'tipo_usuario'));
     }
 
+    /**
+     * Procesar el registro de usuarios
+     */
     public function registrar(Request $request)
     {
-        Log::info('=== INICIANDO REGISTRO ===');
-        Log::info('Tipo de usuario seleccionado:', ['tipo' => $request->tipo_usuario]);
+        Log::info('=== INICIANDO REGISTRO SIMPLIFICADO ===');
 
-        // Validación condicional más flexible
+        // Validación básica para todos los usuarios
         $reglasValidacion = [
             'nombre' => 'required|string|max:100',
             'apellido' => 'required|string|max:100',
@@ -35,34 +47,18 @@ class RegistroController extends Controller
             'terminos' => 'required|accepted',
         ];
 
-        // Solo validar campos de paciente si el tipo es paciente
-        if ($request->tipo_usuario === 'paciente') {
-            $reglasValidacion['fecha_nacimiento'] = 'required|date|before:today';
-            $reglasValidacion['genero'] = 'required|in:masculino,femenino,otro,prefiero_no_decir';
-            
-            // Hacer opcionales los campos de profesional para pacientes
-            $request->merge(['especialidad_principal' => null]);
-            $request->merge(['matricula' => null]);
-        } else {
-            // Solo validar campos de profesional si NO es paciente
+        // Campos específicos para profesionales
+        if ($request->tipo_usuario !== 'paciente') {
             $reglasValidacion['especialidad_principal'] = 'required|string|max:100';
             $reglasValidacion['matricula'] = 'nullable|string|max:50';
-            
-            // Hacer opcionales los campos de paciente para profesionales
-            $request->merge(['fecha_nacimiento' => null]);
-            $request->merge(['genero' => null]);
+            $reglasValidacion['clinica_id'] = 'required|exists:clinicas,id_clinica';
+        } else {
+            // Solo datos básicos para pacientes
+            $reglasValidacion['fecha_nacimiento'] = 'required|date|before:today';
+            $reglasValidacion['genero'] = 'required|in:masculino,femenino,otro,prefiero_no_decir';
         }
 
-        Log::info('Reglas de validación:', $reglasValidacion);
-
-        try {
-            $datosValidados = $request->validate($reglasValidacion);
-            Log::info('Validación exitosa - datos validados:', $datosValidados);
-            
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::error('ERRORES DE VALIDACIÓN:', $e->errors());
-            throw $e;
-        }
+        $datosValidados = $request->validate($reglasValidacion);
 
         try {
             DB::beginTransaction();
@@ -77,45 +73,56 @@ class RegistroController extends Controller
                 'telefono' => $datosValidados['telefono'] ?? null,
             ]);
 
-            Log::info('Usuario creado:', ['id' => $usuario->id_usuario, 'tipo' => $usuario->tipo_usuario]);
-
-            // Crear registro específico según tipo de usuario
+            // Crear registro específico
             if ($datosValidados['tipo_usuario'] === 'paciente') {
-                Paciente::create([
+                $paciente = Paciente::create([
                     'usuario_id' => $usuario->id_usuario,
                     'fecha_nacimiento' => $datosValidados['fecha_nacimiento'],
                     'genero' => $datosValidados['genero'],
                 ]);
-                Log::info('Paciente creado exitosamente');
+
+                Log::info('Paciente registrado exitosamente:', [
+                    'paciente_id' => $paciente->id,
+                    'usuario_id' => $usuario->id_usuario
+                ]);
             } else {
-                Profesional::create([
+                $profesional = Profesional::create([
                     'usuario_id' => $usuario->id_usuario,
                     'especialidad_principal' => $datosValidados['especialidad_principal'],
                     'matricula' => $datosValidados['matricula'] ?? null,
-                    'estado_verificacion' => 'pendiente',
+                    'estado_verificacion' => 'pendiente', // Ya lo tienes bien!
+                    'palabras_clave_especialidad' => json_encode([]), // Vacío hasta aprobación
+                    'sintomas_atiende' => json_encode([]),
+                    'disponibilidad_inmediata' => false, // No disponible hasta aprobación
+                    'tiempo_respuesta_promedio_horas' => 0
                 ]);
-                Log::info('Profesional creado exitosamente');
+
+                // Asignar a clínica
+                $profesional->clinicas()->attach($datosValidados['clinica_id'], [
+                    'horario_trabajo' => $request->horario_trabajo ?? 'Lunes a Viernes 9:00-18:00',
+                    'estado' => 'pendiente', // Pendiente de aprobación
+                    'fecha_ingreso' => now()
+                ]);
+
+                Log::info('Profesional registrado pendiente de aprobación:', [
+                    'profesional_id' => $profesional->id,
+                    'clinica_id' => $datosValidados['clinica_id'],
+                    'email' => $usuario->email
+                ]);
             }
 
             DB::commit();
 
-            // Autenticar al usuario después del registro
+            // Autenticar al usuario
             auth()->login($usuario);
-            Log::info('Usuario autenticado en el sistema');
 
-            // Redirigir al dashboard
             return redirect()->route('dashboard')
-                ->with('exito', '¡Registro completado exitosamente! Bienvenido a PsyConnect.');
-
+                ->with('exito', '¡Registro completado exitosamente!');
         } catch (\Exception $e) {
             DB::rollBack();
-            
             Log::error('Error en registro: ' . $e->getMessage());
-            Log::error('Trace: ' . $e->getTraceAsString());
-            
-            return back()
-                ->withInput()
-                ->with('error', 'Error en el registro: ' . $e->getMessage());
+
+            return back()->withInput()->with('error', 'Error en el registro: ' . $e->getMessage());
         }
     }
 }

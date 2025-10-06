@@ -30,6 +30,46 @@
             border-color: #4682B4;
             background: #F0F8FF;
         }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #E5E7EB;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            border-color: #3B82F6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            outline: none;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #E5E7EB;
+            border-radius: 12px;
+            font-size: 16px;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .form-select:focus {
+            border-color: #3B82F6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            outline: none;
+        }
     </style>
 </head>
 
@@ -50,7 +90,7 @@
 
                         <!-- MOSTRAR ERRORES GENERALES -->
                         @if ($errors->any())
-                            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+                            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6 fade-in">
                                 <h4 class="font-bold">Error en el formulario:</h4>
                                 <ul class="list-disc list-inside mt-2">
                                     @foreach ($errors->all() as $error)
@@ -62,13 +102,13 @@
 
                         <!-- MOSTRAR MENSAJES DE ÉXITO/ERROR -->
                         @if (session('exito'))
-                            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+                            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6 fade-in">
                                 {{ session('exito') }}
                             </div>
                         @endif
 
                         @if (session('error'))
-                            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+                            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6 fade-in">
                                 {{ session('error') }}
                             </div>
                         @endif
@@ -80,10 +120,10 @@
                                     <i class="fas fa-user mr-2 text-blue-500"></i>Nombre
                                 </label>
                                 <input type="text" id="nombre" name="nombre"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                                    class="form-input"
                                     value="{{ old('nombre') }}" required>
                                 @error('nombre')
-                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                    <p class="text-red-500 text-sm mt-1 fade-in">{{ $message }}</p>
                                 @enderror
                             </div>
                             <div>
@@ -91,10 +131,10 @@
                                     <i class="fas fa-user mr-2 text-blue-500"></i>Apellido
                                 </label>
                                 <input type="text" id="apellido" name="apellido"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                                    class="form-input"
                                     value="{{ old('apellido') }}" required>
                                 @error('apellido')
-                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                    <p class="text-red-500 text-sm mt-1 fade-in">{{ $message }}</p>
                                 @enderror
                             </div>
                         </div>
@@ -106,10 +146,10 @@
                                     <i class="fas fa-envelope mr-2 text-blue-500"></i>Email
                                 </label>
                                 <input type="email" id="email" name="email"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                                    class="form-input"
                                     value="{{ old('email') }}" required>
                                 @error('email')
-                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                    <p class="text-red-500 text-sm mt-1 fade-in">{{ $message }}</p>
                                 @enderror
                             </div>
                             <div>
@@ -117,10 +157,10 @@
                                     <i class="fas fa-phone mr-2 text-blue-500"></i>Teléfono
                                 </label>
                                 <input type="tel" id="telefono" name="telefono"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                                    class="form-input"
                                     value="{{ old('telefono') }}">
                                 @error('telefono')
-                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                    <p class="text-red-500 text-sm mt-1 fade-in">{{ $message }}</p>
                                 @enderror
                             </div>
                         </div>
@@ -132,10 +172,10 @@
                                     <i class="fas fa-lock mr-2 text-blue-500"></i>Contraseña
                                 </label>
                                 <input type="password" id="contrasenia" name="contrasenia"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                                    class="form-input"
                                     required minlength="8">
                                 @error('contrasenia')
-                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                    <p class="text-red-500 text-sm mt-1 fade-in">{{ $message }}</p>
                                 @enderror
                             </div>
                             <div>
@@ -144,8 +184,9 @@
                                     <i class="fas fa-lock mr-2 text-blue-500"></i>Confirmar Contraseña
                                 </label>
                                 <input type="password" id="contrasenia_confirmation" name="contrasenia_confirmation"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                                    class="form-input"
                                     required>
+                                <div id="passwordMatchMessage" class="text-sm mt-1 hidden"></div>
                             </div>
                         </div>
 
@@ -155,25 +196,25 @@
                                 <i class="fas fa-users mr-2 text-blue-500"></i>¿Cómo usarás PsyConnect?
                             </label>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="userTypeSelection">
-                                <div class="user-type-card p-4 border rounded-lg cursor-pointer text-center"
+                                <div class="user-type-card p-4 border rounded-lg cursor-pointer text-center interactive-card"
                                     data-type="paciente" onclick="selectUserType('paciente')">
                                     <i class="fas fa-user-heart text-3xl text-blue-500 mb-2"></i>
                                     <h3 class="font-semibold text-gray-800">Paciente</h3>
                                     <p class="text-sm text-gray-600 mt-1">Quiero seguir mi bienestar emocional</p>
                                 </div>
-                                <div class="user-type-card p-4 border rounded-lg cursor-pointer text-center"
+                                <div class="user-type-card p-4 border rounded-lg cursor-pointer text-center interactive-card"
                                     data-type="psicologo" onclick="selectUserType('psicologo')">
                                     <i class="fas fa-brain text-3xl text-green-500 mb-2"></i>
                                     <h3 class="font-semibold text-gray-800">Psicólogo</h3>
                                     <p class="text-sm text-gray-600 mt-1">Acompañaré pacientes en su proceso</p>
                                 </div>
-                                <div class="user-type-card p-4 border rounded-lg cursor-pointer text-center"
+                                <div class="user-type-card p-4 border rounded-lg cursor-pointer text-center interactive-card"
                                     data-type="psiquiatra" onclick="selectUserType('psiquiatra')">
                                     <i class="fas fa-stethoscope text-3xl text-purple-500 mb-2"></i>
                                     <h3 class="font-semibold text-gray-800">Psiquiatra</h3>
                                     <p class="text-sm text-gray-600 mt-1">Brindaré atención médica especializada</p>
                                 </div>
-                                <div class="user-type-card p-4 border rounded-lg cursor-pointer text-center"
+                                <div class="user-type-card p-4 border rounded-lg cursor-pointer text-center interactive-card"
                                     data-type="nutricionista" onclick="selectUserType('nutricionista')">
                                     <i class="fas fa-apple-alt text-3xl text-orange-500 mb-2"></i>
                                     <h3 class="font-semibold text-gray-800">Nutricionista</h3>
@@ -183,74 +224,145 @@
                             <input type="hidden" name="tipo_usuario" id="tipo_usuario"
                                 value="{{ old('tipo_usuario') }}" required>
                             @error('tipo_usuario')
-                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                <p class="text-red-500 text-sm mt-1 fade-in">{{ $message }}</p>
                             @enderror
                         </div>
 
                         <!-- Campos específicos por tipo de usuario -->
                         <div id="additionalFields">
                             <!-- Campos para Paciente -->
-                            <div id="pacienteFields" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                <div>
-                                    <label for="fecha_nacimiento"
-                                        class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-birthday-cake mr-2 text-blue-500"></i>Fecha de Nacimiento
-                                    </label>
-                                    <input type="date" id="fecha_nacimiento" name="fecha_nacimiento"
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                                        value="{{ old('fecha_nacimiento') }}">
-                                    @error('fecha_nacimiento')
-                                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                                    @enderror
+                            <div id="pacienteFields" class="hidden space-y-4 mb-6 fade-in">
+                                <h3 class="text-lg font-semibold text-blue-600 mb-4">
+                                    <i class="fas fa-user-heart mr-2"></i>Información Personal
+                                </h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="fecha_nacimiento"
+                                            class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-birthday-cake mr-2 text-blue-500"></i>Fecha de Nacimiento
+                                        </label>
+                                        <input type="date" id="fecha_nacimiento" name="fecha_nacimiento"
+                                            class="form-input"
+                                            value="{{ old('fecha_nacimiento') }}" required>
+                                        @error('fecha_nacimiento')
+                                            <p class="text-red-500 text-sm mt-1 fade-in">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+                                    <div>
+                                        <label for="genero" class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-venus-mars mr-2 text-blue-500"></i>Género
+                                        </label>
+                                        <select id="genero" name="genero"
+                                            class="form-select" required>
+                                            <option value="">Seleccionar...</option>
+                                            <option value="masculino"
+                                                {{ old('genero') == 'masculino' ? 'selected' : '' }}>Masculino</option>
+                                            <option value="femenino" {{ old('genero') == 'femenino' ? 'selected' : '' }}>
+                                                Femenino</option>
+                                            <option value="otro" {{ old('genero') == 'otro' ? 'selected' : '' }}>Otro
+                                            </option>
+                                            <option value="prefiero_no_decir"
+                                                {{ old('genero') == 'prefiero_no_decir' ? 'selected' : '' }}>Prefiero no
+                                                decir</option>
+                                        </select>
+                                        @error('genero')
+                                            <p class="text-red-500 text-sm mt-1 fade-in">{{ $message }}</p>
+                                        @enderror
+                                    </div>
                                 </div>
-                                <div>
-                                    <label for="genero" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-venus-mars mr-2 text-blue-500"></i>Género
-                                    </label>
-                                    <select id="genero" name="genero"
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
-                                        <option value="">Seleccionar...</option>
-                                        <option value="masculino"
-                                            {{ old('genero') == 'masculino' ? 'selected' : '' }}>Masculino</option>
-                                        <option value="femenino" {{ old('genero') == 'femenino' ? 'selected' : '' }}>
-                                            Femenino</option>
-                                        <option value="otro" {{ old('genero') == 'otro' ? 'selected' : '' }}>Otro
-                                        </option>
-                                        <option value="prefiero_no_decir"
-                                            {{ old('genero') == 'prefiero_no_decir' ? 'selected' : '' }}>Prefiero no
-                                            decir</option>
-                                    </select>
-                                    @error('genero')
-                                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                                    @enderror
+                                
+                                <!-- NOTA: Descripción de síntomas se hará en el dashboard después del registro -->
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                                    <div class="flex items-start">
+                                        <i class="fas fa-info-circle text-blue-500 mt-1 mr-3"></i>
+                                        <div>
+                                            <p class="text-blue-800 text-sm">
+                                                <strong>Importante:</strong> Una vez registrado, podrás completar 
+                                                el proceso de triaje desde tu dashboard para ser asignado al 
+                                                profesional más adecuado según tus necesidades.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
                             <!-- Campos para Profesionales -->
-                            <div id="profesionalFields" class="hidden grid grid-cols-1 gap-4 mb-6">
-                                <div>
-                                    <label for="especialidad_principal"
-                                        class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-graduation-cap mr-2 text-blue-500"></i>Especialidad Principal
-                                    </label>
-                                    <input type="text" id="especialidad_principal" name="especialidad_principal"
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                                        value="{{ old('especialidad_principal') }}"
-                                        placeholder="Ej: Terapia Cognitivo-Conductual, Psiquiatría General...">
-                                    @error('especialidad_principal')
-                                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                                    @enderror
+                            <div id="profesionalFields" class="hidden space-y-4 mb-6 fade-in">
+                                <h3 class="text-lg font-semibold text-green-600 mb-4">
+                                    <i class="fas fa-user-md mr-2"></i>Información Profesional
+                                </h3>
+                                
+                                <div class="grid grid-cols-1 gap-4">
+                                    <div>
+                                        <label for="especialidad_principal"
+                                            class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-graduation-cap mr-2 text-blue-500"></i>Especialidad Principal
+                                        </label>
+                                        <select id="especialidad_principal" name="especialidad_principal"
+                                            class="form-select" required>
+                                            <option value="">Seleccionar especialidad...</option>
+                                            <option value="Terapia Cognitivo-Conductual" {{ old('especialidad_principal') == 'Terapia Cognitivo-Conductual' ? 'selected' : '' }}>Terapia Cognitivo-Conductual</option>
+                                            <option value="Psicoanálisis" {{ old('especialidad_principal') == 'Psicoanálisis' ? 'selected' : '' }}>Psicoanálisis</option>
+                                            <option value="Terapia Familiar" {{ old('especialidad_principal') == 'Terapia Familiar' ? 'selected' : '' }}>Terapia Familiar</option>
+                                            <option value="Psiquiatría General" {{ old('especialidad_principal') == 'Psiquiatría General' ? 'selected' : '' }}>Psiquiatría General</option>
+                                            <option value="Psiquiatría Infantil" {{ old('especialidad_principal') == 'Psiquiatría Infantil' ? 'selected' : '' }}>Psiquiatría Infantil</option>
+                                            <option value="Nutrición Clínica" {{ old('especialidad_principal') == 'Nutrición Clínica' ? 'selected' : '' }}>Nutrición Clínica</option>
+                                            <option value="Nutrición Deportiva" {{ old('especialidad_principal') == 'Nutrición Deportiva' ? 'selected' : '' }}>Nutrición Deportiva</option>
+                                        </select>
+                                        @error('especialidad_principal')
+                                            <p class="text-red-500 text-sm mt-1 fade-in">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+                                    <div>
+                                        <label for="matricula" class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-id-card mr-2 text-blue-500"></i>Número de Matrícula
+                                        </label>
+                                        <input type="text" id="matricula" name="matricula"
+                                            class="form-input"
+                                            value="{{ old('matricula') }}" placeholder="Opcional (ej: MP 12345)">
+                                        @error('matricula')
+                                            <p class="text-red-500 text-sm mt-1 fade-in">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+
+                                    <!-- Selector de Clínica -->
+                                    <div>
+                                        <label for="clinica_id" class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-hospital mr-2 text-blue-500"></i>Clínica/Sede de Trabajo
+                                        </label>
+                                        <select id="clinica_id" name="clinica_id"
+                                            class="form-select" required>
+                                            <option value="">Seleccionar clínica...</option>
+                                            @foreach($clinicas as $clinica)
+                                                <option value="{{ $clinica->id_clinica }}" 
+                                                    {{ old('clinica_id') == $clinica->id_clinica ? 'selected' : '' }}>
+                                                    {{ $clinica->nombre }} - {{ $clinica->ciudad }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('clinica_id')
+                                            <p class="text-red-500 text-sm mt-1 fade-in">{{ $message }}</p>
+                                        @enderror
+                                        <p class="text-sm text-gray-500 mt-2">
+                                            <i class="fas fa-info-circle mr-1 text-blue-500"></i>
+                                            Tu solicitud será revisada por el administrador de la clínica. 
+                                            Una vez aprobado, podrás configurar tus especialidades y palabras clave.
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label for="matricula" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="fas fa-id-card mr-2 text-blue-500"></i>Número de Matrícula
-                                    </label>
-                                    <input type="text" id="matricula" name="matricula"
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                                        value="{{ old('matricula') }}" placeholder="Opcional">
-                                    @error('matricula')
-                                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                                    @enderror
+
+                                <!-- Información sobre configuración posterior -->
+                                <div class="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
+                                    <div class="flex items-start">
+                                        <i class="fas fa-cog text-green-500 mt-1 mr-3"></i>
+                                        <div>
+                                            <h4 class="font-semibold text-green-800 mb-1">Configuración Posterior</h4>
+                                            <p class="text-green-700 text-sm">
+                                                Después de ser aprobado por el administrador, podrás configurar 
+                                                tus palabras clave de especialidad desde tu dashboard profesional.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -258,24 +370,24 @@
                         <!-- Términos y Condiciones -->
                         <div class="mb-6">
                             <label class="flex items-start">
-                                <input type="checkbox" name="terminos" value="1"
-                                    class="mt-1 mr-3 rounded focus:ring-blue-500"
+                                <input type="checkbox" id="terminos" name="terminos" value="1"
+                                    class="mt-1 mr-3 rounded focus:ring-blue-500 border-gray-300 text-blue-600"
                                     {{ old('terminos') ? 'checked' : '' }} required>
                                 <span class="text-sm text-gray-700">
-                                    Acepto los <a href="#" class="text-blue-600 hover:underline">Términos de
+                                    Acepto los <a href="#" class="text-blue-600 hover:underline font-medium">Términos de
                                         Servicio</a>
-                                    y la <a href="#" class="text-blue-600 hover:underline">Política de
+                                    y la <a href="#" class="text-blue-600 hover:underline font-medium">Política de
                                         Privacidad</a> de PsyConnect
                                 </span>
                             </label>
                             @error('terminos')
-                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                <p class="text-red-500 text-sm mt-1 fade-in">{{ $message }}</p>
                             @enderror
                         </div>
 
                         <!-- Botón de Registro -->
-                        <button type="submit"
-                            class="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-4 px-6 rounded-lg font-semibold text-lg transition duration-300 transform hover:scale-105 focus:ring-4 focus:ring-blue-200">
+                        <button type="submit" id="submitBtn"
+                            class="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-4 px-6 rounded-lg font-semibold text-lg transition duration-300 transform hover:scale-105 focus:ring-4 focus:ring-blue-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
                             <i class="fas fa-rocket mr-2"></i>Crear Mi Cuenta
                         </button>
 
@@ -283,7 +395,7 @@
                         <div class="text-center mt-6">
                             <p class="text-gray-600">
                                 ¿Ya tienes una cuenta?
-                                <a href="{{ route('login') }}" class="text-blue-600 hover:underline font-semibold">
+                                <a href="{{ route('login') }}" class="text-blue-600 hover:underline font-semibold transition duration-200">
                                     Inicia Sesión
                                 </a>
                             </p>
@@ -326,6 +438,14 @@
                                     <p class="text-sm opacity-90 mt-1">Conecta con especialistas en salud mental</p>
                                 </div>
                             </div>
+
+                            <div class="flex items-start">
+                                <i class="fas fa-bolt mt-1 mr-3 text-blue-200"></i>
+                                <div>
+                                    <h4 class="font-semibold">Asignación Inteligente</h4>
+                                    <p class="text-sm opacity-90 mt-1">Sistema automático de matching con profesionales</p>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="mt-8 p-4 bg-blue-400 bg-opacity-20 rounded-lg">
@@ -352,38 +472,93 @@
             document.getElementById('tipo_usuario').value = type;
 
             // Mostrar campos adicionales según el tipo
-            document.querySelectorAll('#additionalFields > div').forEach(div => {
-                div.classList.add('hidden');
-            });
+            document.getElementById('pacienteFields').classList.add('hidden');
+            document.getElementById('profesionalFields').classList.add('hidden');
 
             if (type === 'paciente') {
                 document.getElementById('pacienteFields').classList.remove('hidden');
-                document.getElementById('profesionalFields').classList.add('hidden');
-
-                // Hacer requeridos los campos de paciente y limpiar profesionales
+                
+                // Hacer requeridos los campos de paciente
                 document.getElementById('fecha_nacimiento').required = true;
                 document.getElementById('genero').required = true;
 
-                // Limpiar y hacer opcionales campos de profesional
-                document.getElementById('especialidad_principal').value = '';
+                // Hacer opcionales campos de profesional
                 document.getElementById('especialidad_principal').required = false;
-                document.getElementById('matricula').value = '';
-                document.getElementById('matricula').required = false;
+                document.getElementById('clinica_id').required = false;
 
             } else {
                 document.getElementById('profesionalFields').classList.remove('hidden');
-                document.getElementById('pacienteFields').classList.add('hidden');
-
-                // Hacer requeridos los campos de profesional y limpiar pacientes
+                
+                // Hacer requeridos los campos de profesional
                 document.getElementById('especialidad_principal').required = true;
+                document.getElementById('clinica_id').required = true;
 
-                // Limpiar y hacer opcionales campos de paciente
-                document.getElementById('fecha_nacimiento').value = '';
+                // Hacer opcionales campos de paciente
                 document.getElementById('fecha_nacimiento').required = false;
-                document.getElementById('genero').value = '';
                 document.getElementById('genero').required = false;
             }
+
+            validarFormulario();
         }
+
+        // Validación de contraseña en tiempo real
+        function validarContrasenia() {
+            const password = document.getElementById('contrasenia').value;
+            const confirm = document.getElementById('contrasenia_confirmation').value;
+            const message = document.getElementById('passwordMatchMessage');
+
+            if (confirm === '') {
+                message.classList.add('hidden');
+                return true;
+            }
+
+            if (password === confirm) {
+                message.textContent = '✓ Las contraseñas coinciden';
+                message.className = 'text-green-600 text-sm mt-1 fade-in';
+                message.classList.remove('hidden');
+                return true;
+            } else {
+                message.textContent = '✗ Las contraseñas no coinciden';
+                message.className = 'text-red-600 text-sm mt-1 fade-in';
+                message.classList.remove('hidden');
+                return false;
+            }
+        }
+
+        // Validación general del formulario
+        function validarFormulario() {
+            const tipoUsuario = document.getElementById('tipo_usuario').value;
+            const terminos = document.getElementById('terminos').checked;
+            const passwordValida = validarContrasenia();
+            const submitBtn = document.getElementById('submitBtn');
+
+            let formularioValido = tipoUsuario && terminos && passwordValida;
+
+            // Validaciones específicas por tipo de usuario
+            if (tipoUsuario === 'paciente') {
+                const fechaNacimiento = document.getElementById('fecha_nacimiento').value;
+                const genero = document.getElementById('genero').value;
+                formularioValido = formularioValido && fechaNacimiento && genero;
+            } else if (tipoUsuario) {
+                const especialidad = document.getElementById('especialidad_principal').value;
+                const clinica = document.getElementById('clinica_id').value;
+                formularioValido = formularioValido && especialidad && clinica;
+            }
+
+            submitBtn.disabled = !formularioValido;
+            return formularioValido;
+        }
+
+        // Event listeners para validación en tiempo real
+        document.getElementById('contrasenia').addEventListener('input', validarContrasenia);
+        document.getElementById('contrasenia_confirmation').addEventListener('input', validarContrasenia);
+        document.getElementById('terminos').addEventListener('change', validarFormulario);
+
+        // Event listeners para campos que afectan la validación
+        document.querySelectorAll('#pacienteFields input, #pacienteFields select, #profesionalFields input, #profesionalFields select').forEach(element => {
+            element.addEventListener('input', validarFormulario);
+            element.addEventListener('change', validarFormulario);
+        });
 
         // Seleccionar tipo de usuario si hay valor en old
         document.addEventListener('DOMContentLoaded', function() {
@@ -391,51 +566,68 @@
             if (oldType) {
                 selectUserType(oldType);
             } else {
-                // Por defecto, seleccionar paciente y limpiar campos
+                // Por defecto, seleccionar paciente
                 selectUserType('paciente');
             }
+
+            // Validación inicial
+            validarFormulario();
+
+            // Mostrar mensajes de error de Laravel con scroll suave
+            @if ($errors->any())
+                setTimeout(() => {
+                    const firstError = document.querySelector('.text-red-500');
+                    if (firstError) {
+                        firstError.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
+                        });
+                    }
+                }, 300);
+            @endif
         });
 
-        // Prevenir envío del formulario si hay campos incorrectos
+        // Prevenir envío del formulario si no es válido
         document.getElementById('registroForm').addEventListener('submit', function(e) {
-            const tipoUsuario = document.getElementById('tipo_usuario').value;
-
-            if (tipoUsuario === 'paciente') {
-                // Limpiar campos de profesional antes de enviar
-                document.getElementById('especialidad_principal').value = '';
-                document.getElementById('matricula').value = '';
-            } else {
-                // Limpiar campos de paciente antes de enviar
-                document.getElementById('fecha_nacimiento').value = '';
-                document.getElementById('genero').value = '';
-            }
-        });
-
-        // Validación de contraseña en tiempo real
-        document.getElementById('contrasenia_confirmation').addEventListener('input', function() {
-            const password = document.getElementById('contrasenia').value;
-            const confirm = this.value;
-
-            if (password !== confirm) {
-                this.style.borderColor = '#EF4444';
-            } else {
-                this.style.borderColor = '#10B981';
-            }
-        });
-
-        // Mostrar mensajes de error de Laravel
-        @if ($errors->any())
-            setTimeout(() => {
-                const firstError = document.querySelector('.text-red-500');
-                if (firstError) {
-                    firstError.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center'
-                    });
+            if (!validarFormulario()) {
+                e.preventDefault();
+                
+                // Mostrar mensaje de error
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6 fade-in';
+                errorDiv.innerHTML = `
+                    <strong>Error:</strong> Por favor completa todos los campos requeridos correctamente.
+                `;
+                
+                const existingError = document.querySelector('.bg-red-100');
+                if (!existingError) {
+                    this.prepend(errorDiv);
                 }
-            }, 100);
-        @endif
+
+                // Scroll al primer error
+                setTimeout(() => {
+                    const firstInvalid = this.querySelector(':invalid');
+                    if (firstInvalid) {
+                        firstInvalid.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
+                        });
+                        firstInvalid.focus();
+                    }
+                }, 100);
+            }
+        });
+
+        // Efectos visuales mejorados
+        document.querySelectorAll('.form-input, .form-select').forEach(element => {
+            element.addEventListener('focus', function() {
+                this.parentElement.classList.add('ring-2', 'ring-blue-200', 'rounded-lg');
+            });
+            
+            element.addEventListener('blur', function() {
+                this.parentElement.classList.remove('ring-2', 'ring-blue-200', 'rounded-lg');
+            });
+        });
     </script>
 </body>
-
 </html>

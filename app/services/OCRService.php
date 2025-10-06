@@ -2,147 +2,294 @@
 
 namespace App\Services;
 
-use thiagoalessio\TesseractOCR\TesseractOCR;
+use App\Models\Manuscrito;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Exception;
 
 class OCRService
 {
     public function procesarImagen($rutaImagen)
     {
         try {
-            Log::info("=== INICIANDO PROCESAMIENTO OCR ===");
-            Log::info("Ruta imagen: {$rutaImagen}");
-
+            Log::info('Procesando imagen con OCR', ['ruta_imagen' => $rutaImagen]);
+            
             // Verificar que el archivo existe
-            $rutaCompleta = storage_path('app/public/' . $rutaImagen);
-            Log::info("Ruta completa: {$rutaCompleta}");
-
-            if (!file_exists($rutaCompleta)) {
-                throw new \Exception("El archivo no existe en: {$rutaCompleta}");
+            if (!Storage::disk('public')->exists($rutaImagen)) {
+                throw new Exception("Imagen no encontrada: " . $rutaImagen);
             }
-
-            // Verificar permisos del archivo
-            if (!is_readable($rutaCompleta)) {
-                throw new \Exception("El archivo no es readable: {$rutaCompleta}");
-            }
-
-            Log::info("Archivo verificado, tamaño: " . filesize($rutaCompleta) . " bytes");
-
-            // Verificar que Tesseract está disponible
-            $tesseractVersion = shell_exec('tesseract --version 2>&1');
-            Log::info("Tesseract version: " . substr($tesseractVersion, 0, 100));
-
-            // Configurar Tesseract para español con manejo de errores
-            Log::info("Configurando Tesseract OCR...");
-
-            $ocr = new TesseractOCR($rutaCompleta);
-
-            $texto = $ocr->lang('spa', 'eng')
-                ->psm(6)
-                ->oem(3)
-                ->config('tessedit_char_whitelist', 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789áéíóúÁÉÍÓÚñÑüÜ.,!?¡¿()[]{}:;- ')
-                ->run();
-
-            Log::info("OCR completado exitosamente");
-            Log::info("Texto extraído (primeros 100 chars): " . substr($texto, 0, 100));
-
-            // Calcular confianza
-            $confianza = $this->calcularConfianzaOCR($texto);
-
+            
+            // Obtener la ruta completa del archivo
+            $rutaCompleta = Storage::disk('public')->path($rutaImagen);
+            
+            // Procesar la imagen
+            $resultado = $this->procesarImagenConOCR($rutaCompleta);
+            
             return [
-                'texto' => trim($texto),
-                'confianza' => $confianza,
-                'longitud_texto' => strlen(trim($texto)),
-                'procesado_con' => 'Tesseract OCR Real'
+                'texto' => $resultado['texto'],
+                'confianza' => $resultado['confianza'],
+                'longitud_texto' => $resultado['longitud_texto'],
+                'procesado_con' => $resultado['procesado_con'],
+                'palabras_clave' => $resultado['palabras_clave'] ?? [],
+                'informacion_estructurada' => $resultado['informacion_estructurada'] ?? []
             ];
-        } catch (\Exception $e) {
-            Log::error("❌ ERROR en OCRService: " . $e->getMessage());
-            Log::error("Trace: " . $e->getTraceAsString());
-
-            // Fallback más robusto
-            return $this->procesamientoFallback($rutaImagen, $e->getMessage());
+            
+        } catch (Exception $e) {
+            Log::error('Error en procesamiento de imagen OCR: ' . $e->getMessage());
+            throw $e;
         }
     }
-
-    private function calcularConfianzaOCR($texto)
+    
+    private function procesarImagenConOCR($rutaCompleta)
     {
-        $longitud = strlen(trim($texto));
-
-        if ($longitud === 0) return 0.0;
-        if ($longitud < 10) return 30.0;
-        if ($longitud < 50) return 60.0;
-
-        // Calcular confianza basada en caracteres válidos
-        $caracteresValidos = preg_match_all('/[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s]/', $texto);
-        $totalCaracteres = strlen($texto);
-
-        if ($totalCaracteres > 0) {
-            $confianza = ($caracteresValidos / $totalCaracteres) * 100;
-            return min(95.0, max(30.0, $confianza));
-        }
-
-        return 70.0;
+        // Aquí puedes integrar con diferentes servicios OCR
+        
+        // Opción 1: Google Cloud Vision API (Recomendado para producción)
+        // return $this->usarGoogleVisionOCR($rutaCompleta);
+        
+        // Opción 2: Tesseract OCR (Open Source)
+        // return $this->usarTesseractOCR($rutaCompleta);
+        
+        // Opción 3: Simulación (para desarrollo)
+        return $this->simularOCR($rutaCompleta);
     }
-
-    private function procesamientoFallback($rutaImagen, $error)
+    
+    private function simularOCR($rutaCompleta)
     {
-        Log::warning("Usando fallback para OCR. Error: {$error}");
-
-        // Textos de ejemplo para demostración
+        Log::info('Simulando procesamiento OCR para: ' . $rutaCompleta);
+        
+        // Simular diferentes textos basados en el nombre del archivo o contenido
         $textosEjemplo = [
-            "Hoy me siento muy feliz y contento con la vida. Todo parece ir bien y estoy agradecido por las oportunidades que se presentan. El futuro se ve prometedor y lleno de esperanza.",
-            "Estoy pasando por un momento difícil. La ansiedad no me deja en paz y me siento abrumado por las circunstancias. Necesito encontrar paz interior y calma para seguir adelante.",
-            "Me siento equilibrado hoy. Ni especialmente feliz ni triste, simplemente en un estado de tranquilidad. Es un día como cualquier otro, sin grandes altibajos emocionales.",
-            "¡Qué día tan maravilloso! El sol brilla y mi corazón está lleno de alegría. Estoy emocionado por lo que viene y agradecido por cada momento de felicidad.",
-            "Hoy las cosas no salieron como esperaba. Me siento frustrado y un poco decepcionado. Pero sé que mañana será otro día y tendré nuevas oportunidades para mejorar."
+            "Hoy me siento muy ansioso. Tuve una discusión con mi familia y no puedo dejar de pensar en eso. Me cuesta concentrarme en el trabajo y siento que todo me sale mal.",
+            
+            "Últimamente he estado teniendo problemas para dormir. Me despierto en la noche con pensamientos negativos y me cuesta volver a conciliar el sueño. Me siento cansado todo el día.",
+            
+            "Estoy pasando por un momento difícil en mi relación de pareja. Hemos estado discutiendo frecuentemente y siento que ya no nos entendemos como antes.",
+            
+            "El trabajo me está generando mucho estrés. Mi jefe me exige demasiado y siento que no estoy a la altura de las expectativas. He tenido dolores de cabeza frecuentes.",
+            
+            "Desde el accidente de auto no he podido recuperar mi normalidad. Tengo pesadillas y me siento irritable la mayor parte del tiempo. Evito manejar cuando puedo."
         ];
+        
+        // Seleccionar un texto aleatorio para simular
+        $textoExtraido = $textosEjemplo[array_rand($textosEjemplo)];
+        $confianza = $this->calcularConfianzaSimulada($textoExtraido);
+        
+        // Extraer información estructurada
+        $informacionEstructurada = $this->extraerInformacionEstructurada($textoExtraido);
+        
+        return [
+            'texto' => $textoExtraido,
+            'confianza' => $confianza,
+            'longitud_texto' => strlen($textoExtraido),
+            'procesado_con' => 'OCR Simulado (Desarrollo)',
+            'palabras_clave' => $this->extraerPalabrasClave($textoExtraido),
+            'informacion_estructurada' => $informacionEstructurada
+        ];
+    }
+    
+    private function calcularConfianzaSimulada($texto)
+    {
+        $longitud = strlen($texto);
+        $palabras = str_word_count($texto);
+        
+        // Simular confianza basada en características del texto
+        if ($palabras < 15) return 0.4;
+        if ($palabras < 30) return 0.7;
+        if ($palabras < 50) return 0.85;
+        return 0.95;
+    }
+    
+    private function extraerInformacionEstructurada($texto)
+    {
+        $textoLower = mb_strtolower($texto);
+        
+        return [
+            'sintomas_detectados' => $this->detectarSintomas($textoLower),
+            'contextos' => $this->detectarContextos($textoLower),
+            'emociones' => $this->detectarEmociones($textoLower),
+            'urgencia' => $this->determinarUrgencia($textoLower),
+            'timestamp' => now()->toISOString()
+        ];
+    }
+    
+    private function detectarSintomas($texto)
+    {
+        $sintomas = [
+            'ansiedad' => ['ansioso', 'nervioso', 'preocupado', 'pánico', 'angustia', 'miedo', 'tenso'],
+            'depresion' => ['triste', 'deprimido', 'desesperanza', 'vacío', 'sin energía', 'desanimado'],
+            'estres' => ['estrés', 'agobiado', 'presión', 'sobrecargado', 'quemado'],
+            'trauma' => ['trauma', 'abus', 'accidente', 'shock', 'recuerdo intrusivo'],
+            'insomnio' => ['no puedo dormir', 'insomnio', 'pesadillas', 'desvelado'],
+            'ira' => ['enojado', 'furioso', 'irritable', 'rabia', 'frustrado'],
+            'concentracion' => ['concentrarme', 'enfocarme', 'distraído', 'mente en blanco']
+        ];
+        
+        $detectados = [];
+        foreach ($sintomas as $sintoma => $palabras) {
+            foreach ($palabras as $palabra) {
+                if (str_contains($texto, $palabra)) {
+                    $detectados[] = $sintoma;
+                    break;
+                }
+            }
+        }
+        
+        return array_unique($detectados);
+    }
+    
+    private function detectarContextos($texto)
+    {
+        $contextos = [
+            'familia' => ['familia', 'padres', 'madre', 'padre', 'hijos', 'hermanos', 'pareja', 'matrimonio'],
+            'trabajo' => ['trabajo', 'empleo', 'jefe', 'compañeros', 'oficina', 'despido', 'carrera'],
+            'estudios' => ['universidad', 'colegio', 'exámenes', 'estudios', 'profesor'],
+            'relaciones' => ['pareja', 'novio', 'novia', 'esposo', 'esposa', 'amigos', 'relación'],
+            'salud' => ['enfermedad', 'hospital', 'médico', 'diagnóstico', 'tratamiento'],
+            'social' => ['amigos', 'social', 'fiesta', 'reunión', 'solitario']
+        ];
+        
+        $detectados = [];
+        foreach ($contextos as $contexto => $palabras) {
+            foreach ($palabras as $palabra) {
+                if (str_contains($texto, $palabra)) {
+                    $detectados[] = $contexto;
+                    break;
+                }
+            }
+        }
+        
+        return array_unique($detectados);
+    }
+    
+    private function detectarEmociones($texto)
+    {
+        $emociones = [
+            'tristeza' => ['triste', 'tristeza', 'llorar', 'desanimado', 'desesperanza'],
+            'ansiedad' => ['ansioso', 'nervioso', 'preocupado', 'angustiado', 'asustado'],
+            'enojo' => ['enojado', 'furioso', 'molesto', 'irritado', 'frustrado'],
+            'miedo' => ['miedo', 'atemorizado', 'asustado', 'pánico', 'terror'],
+            'confusion' => ['confundido', 'perdido', 'indeciso', 'no sé qué hacer'],
+            'culpa' => ['culpa', 'culpable', 'remordimiento', 'arrepentido']
+        ];
+        
+        $detectados = [];
+        foreach ($emociones as $emocion => $palabras) {
+            foreach ($palabras as $palabra) {
+                if (str_contains($texto, $palabra)) {
+                    $detectados[] = $emocion;
+                    break;
+                }
+            }
+        }
+        
+        return array_unique($detectados);
+    }
+    
+    private function determinarUrgencia($texto)
+    {
+        $palabrasCriticas = ['suicidio', 'matar', 'morir', 'acabar con todo', 'no quiero vivir', 'desesperado'];
+        $palabrasUrgentes = ['urgencia', 'emergencia', 'crisis', 'no aguanto más', 'ayuda inmediata'];
+        
+        foreach ($palabrasCriticas as $palabra) {
+            if (str_contains($texto, $palabra)) {
+                return 'critico';
+            }
+        }
+        
+        foreach ($palabrasUrgentes as $palabra) {
+            if (str_contains($texto, $palabra)) {
+                return 'alto';
+            }
+        }
+        
+        return count($this->detectarSintomas($texto)) > 0 ? 'medio' : 'bajo';
+    }
+    
+    private function extraerPalabrasClave($texto)
+    {
+        $textoLower = mb_strtolower($texto);
+        $stopWords = ['el', 'la', 'los', 'las', 'de', 'del', 'y', 'en', 'un', 'una', 'unos', 'unas', 'con', 'por', 'para', 'sin', 'sobre'];
+        
+        $palabras = str_word_count($textoLower, 1);
+        $palabrasFiltradas = array_diff($palabras, $stopWords);
+        
+        // Contar frecuencia y devolver las más comunes
+        $frecuencia = array_count_values($palabrasFiltradas);
+        arsort($frecuencia);
+        
+        return array_slice(array_keys($frecuencia), 0, 15);
+    }
 
-        $texto = $textosEjemplo[array_rand($textosEjemplo)];
-
+    // Mantener el método procesarManuscrito para compatibilidad
+    public function procesarManuscrito(Manuscrito $manuscrito)
+    {
+        return $this->procesarImagen($manuscrito->imagen_original);
+    }
+    
+    // Métodos para OCR real (puedes implementarlos después)
+    
+    /**
+     * Integración con Google Cloud Vision API
+     */
+    private function usarGoogleVisionOCR($rutaImagen)
+    {
+        // Requiere instalar: composer require google/cloud-vision
+        /*
+        use Google\Cloud\Vision\V1\ImageAnnotatorClient;
+        use Google\Cloud\Vision\V1\Image;
+        use Google\Cloud\Vision\V1\Feature\Type;
+        
+        $imageAnnotator = new ImageAnnotatorClient([
+            'keyFilePath' => config('services.google_cloud.key_file')
+        ]);
+        
+        $image = new Image();
+        $image->setContent(file_get_contents($rutaImagen));
+        
+        $response = $imageAnnotator->textDetection($image);
+        $texts = $response->getTextAnnotations();
+        
+        $texto = '';
+        if ($texts->count() > 0) {
+            $texto = $texts[0]->getDescription();
+        }
+        
+        $imageAnnotator->close();
+        
         return [
             'texto' => $texto,
-            'confianza' => 45.0,
+            'confianza' => 0.95, // Google Vision proporciona confianza por palabra
             'longitud_texto' => strlen($texto),
-            'procesado_con' => 'Fallback - Error: ' . $error,
-            'error_original' => $error
+            'procesado_con' => 'Google Cloud Vision API'
         ];
+        */
+        
+        // Por ahora, usar simulación
+        return $this->simularOCR($rutaImagen);
     }
-
-    public function procesarMultipleIdiomas($rutaImagen, $idiomas = ['spa', 'eng'])
-    {
-        try {
-            $rutaCompleta = storage_path('app/public/' . $rutaImagen);
-
-            $ocr = new TesseractOCR($rutaCompleta);
-
-            foreach ($idiomas as $idioma) {
-                $ocr->lang($idioma);
-            }
-
-            $texto = $ocr->psm(6)->run();
-
-            return [
-                'texto' => trim($texto),
-                'confianza' => $this->calcularConfianzaOCR($texto),
-                'idiomas' => $idiomas
-            ];
-        } catch (\Exception $e) {
-            Log::error("Error en OCR múltiple: " . $e->getMessage());
-            return $this->procesamientoFallback($rutaImagen, $e->getMessage());
-        }
-    }
-
+    
     /**
-     * Procesar PDF (requiere convertir PDF a imágenes primero)
+     * Integración con Tesseract OCR
      */
-    public function procesarPDF($rutaPDF)
+    private function usarTesseractOCR($rutaImagen)
     {
-        // Para futura implementación - convertir PDF a imágenes y luego OCR
+        // Requiere tener Tesseract instalado en el sistema
+        /*
+        $tesseract = new TesseractOCR($rutaImagen);
+        $tesseract->setLanguage('spa'); // Español
+        
+        $texto = $tesseract->run();
+        
         return [
-            'texto' => 'Procesamiento de PDF no implementado aún',
-            'confianza' => 0.0,
-            'procesado_con' => 'PDF no soportado'
+            'texto' => $texto,
+            'confianza' => 0.85,
+            'longitud_texto' => strlen($texto),
+            'procesado_con' => 'Tesseract OCR'
         ];
+        */
+        
+        // Por ahora, usar simulación
+        return $this->simularOCR($rutaImagen);
     }
 }
