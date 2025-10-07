@@ -310,6 +310,84 @@
                             <div class="text-green-700">Matches este Mes</div>
                         </div>
                     </div>
+
+                    <!-- Pacientes Asignados Recientemente -->
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h2 class="text-lg font-semibold text-gray-900">Pacientes Asignados Recientemente</h2>
+                        </div>
+                        <div class="p-6">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                                Paciente</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                                Fecha Asignación</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                                Compatibilidad</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                                Síntomas Principales</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                                Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        @foreach ($pacientesRecientes as $paciente)
+                                            <tr>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="font-medium text-gray-900">
+                                                        {{ $paciente->usuario->nombre }}
+                                                        {{ $paciente->usuario->apellido }}
+                                                    </div>
+                                                    <div class="text-sm text-gray-500">{{ $paciente->usuario->email }}
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {{ $paciente->pivot->fecha_asignacion->format('d/m/Y') }}
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <span
+                                                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                                {{ $paciente->pivot->puntuacion_compatibilidad >= 80
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : ($paciente->pivot->puntuacion_compatibilidad >= 60
+                                                        ? 'bg-yellow-100 text-yellow-800'
+                                                        : 'bg-red-100 text-red-800') }}">
+                                                        {{ $paciente->pivot->puntuacion_compatibilidad }}%
+                                                    </span>
+                                                </td>
+                                                <td class="px-6 py-4 text-sm text-gray-900">
+                                                    <div class="flex flex-wrap gap-1">
+                                                        @foreach (array_slice($paciente->triaje->analisis_sintomatologia['palabras_clave'] ?? [], 0, 3) as $palabra)
+                                                            <span
+                                                                class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs">
+                                                                {{ $palabra }}
+                                                            </span>
+                                                        @endforeach
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <button class="text-blue-600 hover:text-blue-900 mr-3">
+                                                        <i class="fas fa-eye mr-1"></i>Ver
+                                                    </button>
+                                                    <button class="text-green-600 hover:text-green-900">
+                                                        <i class="fas fa-calendar-plus mr-1"></i>Cita
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Configuración de Perfil y Matching -->
@@ -422,79 +500,6 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Pacientes Asignados Recientemente -->
-                <div class="bg-white rounded-lg shadow">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h2 class="text-lg font-semibold text-gray-900">Pacientes Asignados Recientemente</h2>
-                    </div>
-                    <div class="p-6">
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            Paciente</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            Fecha Asignación</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            Compatibilidad</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            Síntomas Principales</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    @foreach ($pacientesRecientes as $paciente)
-                                        <tr>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="font-medium text-gray-900">
-                                                    {{ $paciente->usuario->nombre }}
-                                                    {{ $paciente->usuario->apellido }}
-                                                </div>
-                                                <div class="text-sm text-gray-500">{{ $paciente->usuario->email }}
-                                                </div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {{ $paciente->pivot->fecha_asignacion->format('d/m/Y') }}
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <span
-                                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                                {{ $paciente->pivot->puntuacion_compatibilidad >= 80
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : ($paciente->pivot->puntuacion_compatibilidad >= 60
-                                                        ? 'bg-yellow-100 text-yellow-800'
-                                                        : 'bg-red-100 text-red-800') }}">
-                                                    {{ $paciente->pivot->puntuacion_compatibilidad }}%
-                                                </span>
-                                            </td>
-                                            <td class="px-6 py-4 text-sm text-gray-900">
-                                                <div class="flex flex-wrap gap-1">
-                                                    @foreach (array_slice($paciente->triaje->analisis_sintomatologia['palabras_clave'] ?? [], 0, 3) as $palabra)
-                                                        <span
-                                                            class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs">
-                                                            {{ $palabra }}
-                                                        </span>
-                                                    @endforeach
-                                                </div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <button class="text-blue-600 hover:text-blue-900 mr-3">
-                                                    <i class="fas fa-eye mr-1"></i>Ver
-                                                </button>
-                                                <button class="text-green-600 hover:text-green-900">
-                                                    <i class="fas fa-calendar-plus mr-1"></i>Cita
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -516,6 +521,18 @@
             document.getElementById(modalId).classList.add('hidden');
         }
 
+        function cargarPalabrasClavePorEspecialidad() {
+            const especialidadId = {{ $profesional->especialidad_id ?? 'null' }};
+
+            if (especialidadId) {
+                fetch(`/api/especialidades/${especialidadId}/palabras-clave`)
+                    .then(response => response.json())
+                    .then(palabras => {
+                        // Cargar palabras clave específicas de la especialidad
+                        actualizarInterfazPalabrasClave(palabras);
+                    });
+            }
+        }
         // Filtrar palabras
         function filtrarPalabras() {
             const busqueda = document.getElementById('buscarPalabra').value.toLowerCase();

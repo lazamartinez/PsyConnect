@@ -182,6 +182,10 @@ class DashboardController extends Controller
         $totalPacientes = Paciente::count();
         $triajesPendientes = TriajeInicial::where('estado_triaje', 'pendiente')->count();
 
+        // Nuevos contadores para el panel de control
+        $totalEspecialidades = \App\Models\Especialidad::count();
+        $totalPalabrasClave = \App\Models\PalabraClave::count();
+
         // Nuevos contadores para solicitudes
         $solicitudesPendientes = Profesional::where('estado_verificacion', 'pendiente')->count();
         $solicitudesRecientes = Profesional::with('usuario')
@@ -217,7 +221,9 @@ class DashboardController extends Controller
             'solicitudesRecientes',
             'clinicas',
             'efectividadMatching',
-            'tiempoPromedioAsignacion'
+            'tiempoPromedioAsignacion',
+            'totalEspecialidades', 
+            'totalPalabrasClave'   
         ));
     }
     private function calcularTasaAceptacion(Profesional $profesional)

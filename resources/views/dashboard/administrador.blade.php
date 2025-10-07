@@ -243,6 +243,21 @@
                                 </a>
                             </div>
                         </div>
+                        {{-- En una sección destacada --}}
+                        <div class="mt-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow p-6 text-white">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h3 class="text-xl font-bold mb-2">🎓 Configuración de Especialidades</h3>
+                                    <p class="text-blue-100">Gestiona las especialidades disponibles para cada tipo de
+                                        profesional</p>
+                                </div>
+                                <a href="{{ route('admin.especialidades.index') }}"
+                                    class="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition duration-200 flex items-center">
+                                    <i class="fas fa-graduation-cap mr-2"></i>
+                                    Gestionar Especialidades
+                                </a>
+                            </div>
+                        </div>
                     </div>
                     <div class="p-6">
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -681,11 +696,11 @@
                             </div>
                         </div>
                         ${data.bio ? `
-                                                    <div class="mt-4">
-                                                        <h4 class="font-semibold text-gray-700">Biografía</h4>
-                                                        <p class="text-gray-600">${data.bio}</p>
-                                                    </div>
-                                                    ` : ''}
+                                                        <div class="mt-4">
+                                                            <h4 class="font-semibold text-gray-700">Biografía</h4>
+                                                            <p class="text-gray-600">${data.bio}</p>
+                                                        </div>
+                                                        ` : ''}
                     `;
                     document.getElementById('modalDetalles').classList.remove('hidden');
                 })

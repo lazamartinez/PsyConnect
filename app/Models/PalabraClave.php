@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use App\Models\Especialidad;
 
 class PalabraClave extends Model
 {
@@ -19,6 +20,7 @@ class PalabraClave extends Model
         'nivel_alerta',
         'peso_urgencia',
         'especialidad_recomendada',
+        'especialidad_id',
         'sinonimos',
         'descripcion',
         'estado',
@@ -119,6 +121,11 @@ class PalabraClave extends Model
         return $query->where('nivel_alerta', self::ALERTA_CRITICO);
     }
 
+    public function especialidad()
+    {
+        return $this->belongsTo(\App\Models\Especialidad::class, 'especialidad_id', 'id_especialidad');
+    }
+
     // Relaciones
     public function creador()
     {
@@ -133,7 +140,7 @@ class PalabraClave extends Model
 
     public function getColorAlertaAttribute()
     {
-        return match($this->nivel_alerta) {
+        return match ($this->nivel_alerta) {
             self::ALERTA_CRITICO => 'bg-red-100 text-red-800 border-red-300',
             self::ALERTA_ALTO => 'bg-orange-100 text-orange-800 border-orange-300',
             self::ALERTA_MEDIO => 'bg-yellow-100 text-yellow-800 border-yellow-300',
@@ -145,7 +152,7 @@ class PalabraClave extends Model
 
     public function getIconoAlertaAttribute()
     {
-        return match($this->nivel_alerta) {
+        return match ($this->nivel_alerta) {
             self::ALERTA_CRITICO => 'fas fa-exclamation-triangle',
             self::ALERTA_ALTO => 'fas fa-exclamation-circle',
             self::ALERTA_MEDIO => 'fas fa-info-circle',
@@ -159,7 +166,7 @@ class PalabraClave extends Model
     {
         $sinonimos = $this->sinonimos ?? [];
         array_unshift($sinonimos, $this->palabra);
-        
+
         return $sinonimos;
     }
 
@@ -176,10 +183,10 @@ class PalabraClave extends Model
     public static function importarDesdeArray(array $palabrasConfiguracion): array
     {
         $resultados = [];
-        
+
         foreach ($palabrasConfiguracion as $config) {
             $palabra = self::firstOrNew(['palabra' => $config['palabra']]);
-            
+
             $palabra->fill([
                 'categoria' => $config['categoria'],
                 'nivel_alerta' => $config['nivel_alerta'],
@@ -190,12 +197,12 @@ class PalabraClave extends Model
                 'estado' => $config['estado'] ?? true,
                 'version_configuracion' => now()->timestamp
             ]);
-            
+
             if ($palabra->save()) {
                 $resultados[] = $palabra;
             }
         }
-        
+
         return $resultados;
     }
 

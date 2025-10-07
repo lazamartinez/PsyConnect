@@ -12,6 +12,7 @@ use App\Http\Controllers\SolicitudProfesionalController;
 use App\Http\Controllers\Admin\GestionProfesionalesController;
 use App\Http\Controllers\Admin\GestionPalabrasClaveController;
 use App\Http\Controllers\Admin\ConfiguracionAvanzadaController;
+use App\Http\Controllers\Admin\GestionEspecialidadesController;
 use App\Http\Controllers\TriajeController;
 use App\Http\Controllers\MatchingController;
 use App\Http\Controllers\ConfiguracionProfesionalController;
@@ -97,18 +98,17 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/solicitudes/{id}', [App\Http\Controllers\Admin\GestionProfesionalesController::class, 'show'])->name('admin.solicitudes.show');
         Route::post('/solicitudes/{id}/aprobar', [App\Http\Controllers\Admin\GestionProfesionalesController::class, 'aprobar'])->name('admin.solicitudes.aprobar');
         Route::post('/solicitudes/{id}/rechazar', [App\Http\Controllers\Admin\GestionProfesionalesController::class, 'rechazar'])->name('admin.solicitudes.rechazar');
-        
-        Route::post('/sistema/reparar', function() {
+
+        Route::post('/sistema/reparar', function () {
             try {
                 Artisan::call('sistema:reparar-matching');
                 $output = Artisan::output();
-                
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Sistema reparado exitosamente',
                     'output' => $output
                 ]);
-                
             } catch (\Exception $e) {
                 return response()->json([
                     'success' => false,
@@ -116,7 +116,17 @@ Route::middleware(['auth'])->group(function () {
                 ], 500);
             }
         })->name('admin.sistema.reparar');
-        
+
+        // Gestión de Especialidades
+        Route::get('/especialidades', [GestionEspecialidadesController::class, 'index'])->name('admin.especialidades.index');
+        Route::post('/especialidades', [GestionEspecialidadesController::class, 'store'])->name('admin.especialidades.store');
+        Route::put('/especialidades/{id}', [GestionEspecialidadesController::class, 'update'])->name('admin.especialidades.update');
+        Route::delete('/especialidades/{id}', [GestionEspecialidadesController::class, 'destroy'])->name('admin.especialidades.destroy');
+        Route::post('/especialidades/{id}/estado', [GestionEspecialidadesController::class, 'cambiarEstado'])->name('admin.especialidades.estado');
+        Route::get('/especialidades/por-rol/{rol}', [GestionEspecialidadesController::class, 'obtenerPorRol'])->name('admin.especialidades.por-rol');
+
+        // Palabras Clave por Especialidad
+        Route::get('/palabras-clave/por-especialidad/{especialidadId}', [GestionPalabrasClaveController::class, 'obtenerPorEspecialidad'])->name('admin.palabras-clave.por-especialidad');
     });
 
     // Rutas para profesionales

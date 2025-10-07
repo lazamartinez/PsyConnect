@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             ActualizarConfiguracionMatchingSeeder::class,
             MejorarPalabrasClaveProfesionalesSeeder::class,
             AsignarPalabrasClaveProfesionalesSeeder::class,
+            EspecialidadesSeeder::class,
         ]);
     }
 }

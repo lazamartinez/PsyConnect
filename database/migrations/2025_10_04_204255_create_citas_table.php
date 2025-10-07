@@ -17,10 +17,18 @@ return new class extends Migration
             $table->uuid('paciente_id');
             $table->dateTime('fecha_cita');
             $table->string('estado')->default('pendiente');
+            $table->decimal('monto', 10, 2)->nullable(); // ← sin 'after'
             $table->timestamps();
 
-            $table->foreign('profesional_id')->references('id_profesional')->on('profesionales')->onDelete('cascade');
-            $table->foreign('paciente_id')->references('id_paciente')->on('pacientes')->onDelete('cascade');
+            $table->foreign('profesional_id')
+                ->references('id_profesional')
+                ->on('profesionales')
+                ->onDelete('cascade');
+
+            $table->foreign('paciente_id')
+                ->references('id_paciente')
+                ->on('pacientes')
+                ->onDelete('cascade');
         });
     }
 

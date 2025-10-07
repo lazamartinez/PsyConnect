@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Especialidad;
 use App\Models\Paciente;
 use App\Models\Profesional;
 use App\Models\TriajeInicial;
@@ -20,6 +21,7 @@ class MatchingService
     public function __construct($clinicaId = null)
     {
         $this->clinicaId = $clinicaId;
+        $this->inicializarEspecialidadesSiEsNecesario(); // ✅ AGREGAR
         $this->cargarConfiguracion();
     }
 
@@ -118,6 +120,7 @@ class MatchingService
             $palabrasBasicas = [
                 [
                     'palabra' => 'ansiedad',
+                    'sinonimos' => ['ansioso', 'nervioso', 'preocupado', 'angustia'],
                     'categoria' => 'ansiedad',
                     'nivel_alerta' => 'medio',
                     'peso_urgencia' => 0.8,
@@ -126,6 +129,7 @@ class MatchingService
                 ],
                 [
                     'palabra' => 'depresión',
+                    'sinonimos' => ['deprimido', 'tristeza', 'desanimado', 'desesperanza'],
                     'categoria' => 'depresion',
                     'nivel_alerta' => 'medio',
                     'peso_urgencia' => 0.8,
@@ -134,6 +138,7 @@ class MatchingService
                 ],
                 [
                     'palabra' => 'estrés',
+                    'sinonimos' => ['estresado', 'tensión', 'agobio', 'presión'],
                     'categoria' => 'estres',
                     'nivel_alerta' => 'medio',
                     'peso_urgencia' => 0.7,
@@ -141,29 +146,14 @@ class MatchingService
                     'descripcion' => 'Tensión física o emocional'
                 ],
                 [
-                    'palabra' => 'crisis',
-                    'categoria' => 'crisis',
-                    'nivel_alerta' => 'alto',
-                    'peso_urgencia' => 0.9,
+                    'palabra' => 'insomnio',
+                    'sinonimos' => ['dormir', 'sueño', 'desvelo', 'noches'],
+                    'categoria' => 'sueno',
+                    'nivel_alerta' => 'medio',
+                    'peso_urgencia' => 0.6,
                     'especialidad_recomendada' => 'psicologo',
-                    'descripcion' => 'Situación de emergencia emocional'
+                    'descripcion' => 'Problemas para dormir'
                 ],
-                [
-                    'palabra' => 'suicidio',
-                    'categoria' => 'suicida',
-                    'nivel_alerta' => 'critico',
-                    'peso_urgencia' => 1.0,
-                    'especialidad_recomendada' => 'psiquiatra',
-                    'descripcion' => 'Ideación o intento de quitarse la vida'
-                ],
-                [
-                    'palabra' => 'psicosis',
-                    'categoria' => 'psicosis',
-                    'nivel_alerta' => 'critico',
-                    'peso_urgencia' => 1.0,
-                    'especialidad_recomendada' => 'psiquiatra',
-                    'descripcion' => 'Pérdida de contacto con la realidad'
-                ]
             ];
 
             $creadas = 0;
@@ -187,14 +177,48 @@ class MatchingService
         }
     }
 
-    private function reparacionEmergencia()
+    public function reparacionEmergencia()
     {
+        Log::info("🔧 EJECUTANDO REPARACIÓN DE EMERGENCIA DEL SISTEMA");
+
+        // 1. Verificar y crear profesional de emergencia si es necesario
         if (Profesional::where('estado_verificacion', 'aprobado')->count() === 0) {
             $this->crearProfesionalEmergencia();
         }
 
+        // 2. Verificar y crear palabras clave de emergencia
         if (PalabraClave::where('estado', true)->count() === 0) {
             $this->crearPalabrasClaveEmergencia();
+        }
+
+        // 3. ✅ NUEVO: Reparar profesionales con palabras clave corruptas
+        $this->repararProfesionalesConPalabrasClaveCorruptas();
+    }
+
+    // ✅ AGREGAR ESTE MÉTODO NUEVO
+    private function repararProfesionalesConPalabrasClaveCorruptas()
+    {
+        $profesionalesProblematicos = Profesional::where(function ($query) {
+            $query->where('palabras_clave_especialidad', 'like', '%""[]""%')
+                ->orWhere('palabras_clave_especialidad', 'like', '%[]%')
+                ->orWhereNull('palabras_clave_especialidad');
+        })->get();
+
+        foreach ($profesionalesProblematicos as $profesional) {
+            $palabrasBasicas = [
+                'psicologo' => ['ansiedad', 'depresión', 'estrés', 'crisis', 'familia'],
+                'psiquiatra' => ['medicamento', 'diagnóstico', 'trastorno', 'urgencia', 'hospital'],
+                'nutricionista' => ['dieta', 'alimentación', 'peso', 'comida', 'nutrición']
+            ];
+
+            $palabras = $palabrasBasicas[$profesional->especialidad_principal] ?? ['ansiedad', 'depresión', 'estrés'];
+
+            $profesional->update([
+                'palabras_clave_especialidad' => $palabras,
+                'disponibilidad_inmediata' => true
+            ]);
+
+            Log::info("✅ Profesional {$profesional->id} reparado con palabras clave: " . json_encode($palabras));
         }
     }
 
@@ -246,7 +270,7 @@ class MatchingService
         }
     }
 
-    private function analizarSintomasMejorado(string $descripcion)
+    public function analizarSintomasMejorado(string $descripcion)
     {
         $texto = mb_strtolower(trim($descripcion));
         Log::info("Analizando texto: " . substr($texto, 0, 200));
@@ -299,10 +323,76 @@ class MatchingService
         ];
     }
 
-    private function buscarTerminoEnTexto(string $termino, string $texto): bool
+    private function buscarProfesionalesPorPalabrasClave($palabrasClave, $especialidad = null)
     {
-        $patron = '/\b' . preg_quote($termino, '/') . '\b/i';
-        return preg_match($patron, $texto) === 1;
+        $query = Profesional::where('estado_verificacion', 'aprobado')
+            ->where('disponibilidad_inmediata', true);
+
+        if ($especialidad) {
+            // Búsqueda más flexible de especialidad
+            $query->where(function ($q) use ($especialidad) {
+                $q->where('especialidad_principal', 'like', "%{$especialidad}%")
+                    ->orWhere('especialidad_principal', 'like', "%psicolog%")
+                    ->orWhere('especialidad_principal', 'like', "%psiquiatr%")
+                    ->orWhere('especialidad_principal', 'like', "%nutricion%");
+            });
+        }
+
+        if (!empty($palabrasClave)) {
+            $query->where(function ($q) use ($palabrasClave) {
+                foreach ($palabrasClave as $palabra) {
+                    $q->orWhere('palabras_clave_especialidad', 'like', '%"' . $palabra . '"%')
+                        ->orWhere('palabras_clave_especialidad', 'like', '%' . $palabra . '%');
+                }
+            });
+        }
+
+        $resultados = $query->with(['usuario', 'clinicas', 'especialidad'])->get();
+
+        Log::info("🔍 Búsqueda profesionales - Especialidad: {$especialidad}, Palabras: " . json_encode($palabrasClave));
+        Log::info("🔍 Resultados encontrados: " . $resultados->count());
+
+        return $resultados;
+    }
+
+
+    public function buscarTerminoEnTexto(string $termino, string $texto): bool
+    {
+        $termino = mb_strtolower(trim($termino));
+        $texto = mb_strtolower(trim($texto));
+
+        // 1. Coincidencia exacta directa
+        if (str_contains($texto, $termino)) {
+            Log::info("✅ Coincidencia EXACTA: '{$termino}' en texto");
+            return true;
+        }
+
+        // 2. Coincidencia por raíz (primeros 4-5 caracteres)
+        $raizTermino = substr($termino, 0, 5);
+        if (strlen($raizTermino) >= 3) {
+            $palabrasTexto = explode(' ', $texto);
+            foreach ($palabrasTexto as $palabra) {
+                if (str_starts_with($palabra, $raizTermino)) {
+                    Log::info("✅ Coincidencia por RAÍZ: '{$raizTermino}' en '{$palabra}'");
+                    return true;
+                }
+            }
+        }
+
+        // 3. Coincidencia flexible para sinónimos
+        $terminoLimpio = preg_replace('/[^a-záéíóúñ]/', '', $termino);
+        $textoLimpio = preg_replace('/[^a-záéíóúñ\s]/', ' ', $texto);
+
+        if (strlen($terminoLimpio) >= 4) {
+            $patron = '/\b' . substr($terminoLimpio, 0, 4) . '\w*/i';
+            if (preg_match($patron, $textoLimpio)) {
+                Log::info("✅ Coincidencia FLEXIBLE: '{$terminoLimpio}' en texto");
+                return true;
+            }
+        }
+
+        Log::info("❌ NO coincide: '{$termino}' en texto");
+        return false;
     }
 
     private function determinarNivelUrgenciaMejorado(array $palabrasClave, float $puntajeUrgencia)
@@ -348,32 +438,120 @@ class MatchingService
         Log::info("🟢 Nivel BAJO - Puntaje: {$puntajeUrgencia}, Palabras: {$totalPalabras}");
         return 'bajo';
     }
+    public function diagnosticoRapido($descripcion)
+    {
+        echo "=== 🔍 DIAGNÓSTICO RÁPIDO ===\n";
 
+        // 1. Verificar palabras clave del sistema
+        $palabras = \App\Models\PalabraClave::where('estado', true)->get();
+        echo "1. PALABRAS CLAVE ACTIVAS: " . $palabras->count() . "\n";
+        foreach ($palabras as $palabra) {
+            echo "   - {$palabra->palabra}: " . json_encode($palabra->sinonimos) . "\n";
+        }
+
+        // 2. Probar detección manual
+        $texto = mb_strtolower($descripcion);
+        echo "2. TEXTO ANALIZADO: {$texto}\n";
+
+        $detectadas = [];
+        foreach ($palabras as $palabra) {
+            $terminos = array_merge([$palabra->palabra], $palabra->sinonimos ?? []);
+            foreach ($terminos as $termino) {
+                if (str_contains($texto, $termino)) {
+                    $detectadas[] = "{$palabra->palabra} (via: {$termino})";
+                    break;
+                }
+            }
+        }
+
+        echo "3. PALABRAS DETECTADAS MANUALMENTE: " . count($detectadas) . "\n";
+        foreach ($detectadas as $det) {
+            echo "   - {$det}\n";
+        }
+
+        // 3. Verificar matching básico
+        $profesionalPsicologo = \App\Models\Profesional::where('especialidad_principal', 'like', '%psicolog%')->first();
+        if ($profesionalPsicologo) {
+            echo "4. PSICÓLOGO ENCONTRADO: {$profesionalPsicologo->id}\n";
+            echo "   Palabras clave: " . json_encode($profesionalPsicologo->palabras_clave_especialidad) . "\n";
+
+            // Verificar coincidencias
+            $coincidencias = array_intersect(
+                ['ansiedad', 'estrés', 'insomnio', 'palpitaciones'],
+                $profesionalPsicologo->palabras_clave_especialidad ?? []
+            );
+            echo "   Coincidencias: " . count($coincidencias) . " - " . json_encode($coincidencias) . "\n";
+        }
+    }
+    public function debugMatchingCompleto(Paciente $paciente, string $descripcion)
+    {
+        echo "=== 🐛 DEBUG COMPLETO DEL MATCHING ===\n";
+
+        // 1. Probar análisis
+        $analisis = $this->analizarSintomasMejorado($descripcion);
+        echo "1. ANÁLISIS - Palabras encontradas: " . count($analisis['palabras_clave_encontradas']) . "\n";
+        foreach ($analisis['palabras_clave_encontradas'] as $palabra) {
+            echo "   - {$palabra['palabra']} (via: {$palabra['termino_encontrado']})\n";
+        }
+
+        // 2. Probar especialidad
+        $especialidad = $this->determinarEspecialidadMejorado($analisis);
+        echo "2. ESPECIALIDAD RECOMENDADA: {$especialidad}\n";
+
+        // 3. Verificar profesionales disponibles
+        $profesionales = Profesional::where('estado_verificacion', 'aprobado')->get();
+        echo "3. PROFESIONALES APROBADOS: " . $profesionales->count() . "\n";
+
+        foreach ($profesionales as $prof) {
+            echo "   - {$prof->id}: {$prof->especialidad_principal}\n";
+            echo "     Palabras clave: " . json_encode($prof->palabras_clave_especialidad) . "\n";
+        }
+
+        // 4. Probar matching
+        $resultado = $this->procesarTriajeCompleto($paciente, $descripcion);
+        echo "4. RESULTADO MATCHING:\n";
+        echo "   - Match encontrado: " . ($resultado['match_encontrado'] ? 'SÍ' : 'NO') . "\n";
+        echo "   - Puntaje: {$resultado['puntaje_compatibilidad']}%\n";
+        echo "   - Profesional: " . ($resultado['profesional'] ? $resultado['profesional']->id : 'Ninguno') . "\n";
+
+        return $resultado;        
+    }
     private function encontrarProfesionalOptimoMejorado(Paciente $paciente, array $sintomas, string $descripcion, string $especialidadRecomendada)
     {
-        Log::info("=== BUSCANDO PROFESIONAL OPTIMO MEJORADO ===");
-        Log::info("Especialidad: {$especialidadRecomendada}, Síntomas: " . json_encode($sintomas['sintomas_detectados']));
+        Log::info("=== BUSCANDO PROFESIONAL OPTIMO CON ESPECIALIDADES PARAMETRIZABLES ===");
+        Log::info("Especialidad recomendada: {$especialidadRecomendada}");
 
-        $profesionales = Profesional::where('estado_verificacion', 'aprobado')
-            ->where('especialidad_principal', $especialidadRecomendada)
-            ->where('disponibilidad_inmediata', true)
-            ->where(function ($query) {
-                $query->where('disponibilidad_inmediata', true)
-                    ->orWhere('tiempo_respuesta_promedio_horas', '<=', 72);
-            })
-            ->with(['usuario', 'clinicas'])
-            ->get();
+        // Buscar por especialidad parametrizable
+        $especialidad = Especialidad::where('codigo', $especialidadRecomendada)
+            ->orWhere('nombre', 'like', "%{$especialidadRecomendada}%")
+            ->activas()
+            ->first();
+
+        if (!$especialidad) {
+            Log::warning("No se encontró especialidad parametrizable para: {$especialidadRecomendada}");
+            return $this->resultadoSinProfesionales();
+        }
+
+        Log::info("Especialidad encontrada: {$especialidad->nombre} (ID: {$especialidad->id_especialidad})");
+
+        // Extraer palabras clave del análisis para búsqueda mejorada
+        $palabrasClavePaciente = collect($sintomas['palabras_clave_encontradas'] ?? [])
+            ->pluck('palabra')
+            ->toArray();
+
+        Log::info("Palabras clave del paciente para matching: " . json_encode($palabrasClavePaciente));
+
+        // Usar el método seguro para buscar profesionales
+        $profesionales = $this->buscarProfesionalesPorPalabrasClave(
+            $palabrasClavePaciente,
+            $especialidadRecomendada
+        );
 
         if ($profesionales->isEmpty()) {
-            Log::warning("No hay profesionales aprobados disponibles para: " . $especialidadRecomendada);
-            return [
-                'profesional_optimo' => null,
-                'puntaje' => 0,
-                'todos_los_resultados' => [],
-                'detalles_matching' => [],
-                'umbral_minimo' => 30,
-                'total_profesionales_evaluados' => 0
-            ];
+            Log::warning("No hay profesionales aprobados para la especialidad: {$especialidad->nombre}");
+
+            // Intentar búsqueda más amplia
+            return $this->busquedaAmplia($paciente, $sintomas, $descripcion, $especialidad);
         }
 
         Log::info("Profesionales encontrados: " . $profesionales->count());
@@ -381,25 +559,27 @@ class MatchingService
         $mejorPuntaje = 0;
         $profesionalOptimo = null;
         $resultados = [];
-        $detallesMatching = [];
 
         foreach ($profesionales as $profesional) {
+            // Verificar compatibilidad con la especialidad
+            if (!$profesional->especialidad || !$profesional->especialidad->esCompatibleConPaciente($sintomas)) {
+                Log::info("Profesional {$profesional->id} no compatible con el nivel de urgencia");
+                continue;
+            }
+
             $puntaje = $this->calcularCompatibilidadMejorada($profesional, $sintomas, $descripcion);
-            $detallesCalculo = $this->obtenerDetallesCalculoMejorado($profesional, $sintomas, $descripcion);
 
             $resultado = [
                 'profesional' => $profesional,
                 'puntaje' => $puntaje,
-                'especialidad' => $profesional->especialidad_principal,
-                'palabras_clave' => $profesional->palabras_clave_especialidad ?? [],
-                'detalles_calculo' => $detallesCalculo,
+                'especialidad' => $profesional->especialidad?->nombre ?? $profesional->especialidad_principal,
+                'palabras_clave' => $profesional->obtenerPalabrasClaveCompletas(),
                 'compatibilidad_detallada' => $this->generarCompatibilidadDetallada($profesional, $sintomas)
             ];
 
             $resultados[] = $resultado;
-            $detallesMatching[] = $detallesCalculo;
 
-            Log::info("🎯 Profesional {$profesional->id} - {$profesional->especialidad_principal}: {$puntaje}%");
+            Log::info("🎯 Profesional {$profesional->id} - {$profesional->especialidad?->nombre}: {$puntaje}%");
 
             if ($puntaje > $mejorPuntaje) {
                 $mejorPuntaje = $puntaje;
@@ -412,6 +592,7 @@ class MatchingService
         });
 
         $umbralMinimo = $this->configuracion['umbrales']['compatibilidad_minima'] ?? 30;
+
         if ($mejorPuntaje < $umbralMinimo) {
             Log::warning("❌ Ningún profesional supera el umbral mínimo de {$umbralMinimo}%. Mejor: {$mejorPuntaje}%");
             $profesionalOptimo = null;
@@ -419,14 +600,207 @@ class MatchingService
             Log::info("✅ MEJOR MATCH: Profesional {$profesionalOptimo->id} con {$mejorPuntaje}% de compatibilidad");
         }
 
+        // =============================================
+        // ✅ SOLUCIÓN DE EMERGENCIA - SI NO HAY MATCH
+        // =============================================
+        if (!$profesionalOptimo && count($sintomas['palabras_clave_encontradas'] ?? []) > 0) {
+            Log::warning("🔧 EJECUTANDO SOLUCIÓN DE EMERGENCIA - No se encontró match automático");
+
+            echo "🔧 [DEBUG] Buscando psicólogo de emergencia...\n";
+
+            // Buscar cualquier psicólogo disponible con búsqueda más amplia
+            $psicologoEmergencia = Profesional::where('estado_verificacion', 'aprobado')
+                ->where('disponibilidad_inmediata', true)
+                ->where(function ($q) {
+                    $q->where('especialidad_principal', 'like', '%psicolog%')
+                        ->orWhere('especialidad_principal', 'like', '%Psicología%')
+                        ->orWhere('especialidad_principal', 'like', '%Psicologia%')
+                        ->orWhere('especialidad_principal', 'like', '%psicologia%');
+                })
+                ->first();
+
+            if ($psicologoEmergencia) {
+                echo "🎯 [DEBUG] Psicólogo encontrado: {$psicologoEmergencia->id} - {$psicologoEmergencia->especialidad_principal}\n";
+                Log::info("🎯 ASIGNANDO PSICÓLOGO DE EMERGENCIA: {$psicologoEmergencia->id}");
+
+                // Calcular puntaje basado en coincidencias reales
+                $palabrasPaciente = collect($sintomas['palabras_clave_encontradas'])->pluck('palabra')->toArray();
+                $palabrasProfesional = is_array($psicologoEmergencia->palabras_clave_especialidad)
+                    ? $psicologoEmergencia->palabras_clave_especialidad
+                    : json_decode($psicologoEmergencia->palabras_clave_especialidad, true) ?? [];
+
+                echo "📊 [DEBUG] Palabras paciente: " . json_encode($palabrasPaciente) . "\n";
+                echo "📊 [DEBUG] Palabras profesional: " . json_encode($palabrasProfesional) . "\n";
+
+                $coincidencias = count(array_intersect($palabrasPaciente, $palabrasProfesional));
+                $puntajeBase = min(80, 40 + ($coincidencias * 15)); // 40% base + 15% por coincidencia
+
+                echo "✅ [DEBUG] Coincidencias: {$coincidencias}, Puntaje: {$puntajeBase}%\n";
+
+                return [
+                    'profesional_optimo' => $psicologoEmergencia,
+                    'puntaje' => $puntajeBase,
+                    'todos_los_resultados' => [],
+                    'especialidad_recomendada' => $especialidadRecomendada,
+                    'umbral_minimo' => 30,
+                    'total_profesionales_evaluados' => 1,
+                    'detalles_matching' => [
+                        'tipo_asignacion' => 'emergencia',
+                        'coincidencias_encontradas' => $coincidencias,
+                        'palabras_paciente' => $palabrasPaciente,
+                        'palabras_profesional' => $palabrasProfesional
+                    ]
+                ];
+            } else {
+                echo "❌ [DEBUG] No se encontró ningún psicólogo disponible\n";
+                Log::warning("❌ No se encontró ningún psicólogo para asignación de emergencia");
+            }
+
+            return [
+                'profesional_optimo' => $profesionalOptimo,
+                'puntaje' => $mejorPuntaje,
+                'todos_los_resultados' => $resultados,
+                'especialidad_recomendada' => $especialidad->nombre,
+                'umbral_minimo' => $umbralMinimo,
+                'total_profesionales_evaluados' => count($resultados),
+                'detalles_matching' => [] // ✅ AGREGAR ESTA LÍNEA PARA EVITAR EL ERROR
+            ];
+        }
+    }
+
+    public function diagnosticoCompleto($descripcion)
+    {
+        echo "=== 🔍 DIAGNÓSTICO COMPLETO DEL SISTEMA ===\n\n";
+
+        // 1. Análisis de síntomas
+        echo "1. 📝 ANÁLISIS DE SÍNTOMAS:\n";
+        $analisis = $this->analizarSintomasMejorado($descripcion);
+        echo "   - Palabras detectadas: " . count($analisis['palabras_clave_encontradas']) . "\n";
+        echo "   - Síntomas: " . count($analisis['sintomas_detectados']) . "\n";
+        echo "   - Nivel urgencia: {$analisis['nivel_urgencia']}\n";
+        echo "   - Puntaje: {$analisis['puntaje_urgencia']}\n";
+        foreach ($analisis['palabras_clave_encontradas'] as $palabra) {
+            echo "     * {$palabra['palabra']} (via: {$palabra['termino_encontrado']})\n";
+        }
+
+        // 2. Especialidad recomendada
+        echo "\n2. 🎯 ESPECIALIDAD RECOMENDADA:\n";
+        $especialidad = $this->determinarEspecialidadMejorado($analisis);
+        echo "   - {$especialidad}\n";
+
+        // 3. Profesionales disponibles
+        echo "\n3. 👨‍⚕️ PROFESIONALES DISPONIBLES:\n";
+        $profesionales = Profesional::where('estado_verificacion', 'aprobado')->get();
+        echo "   - Total: {$profesionales->count()}\n";
+
+        foreach ($profesionales as $prof) {
+            $palabrasProf = is_array($prof->palabras_clave_especialidad)
+                ? $prof->palabras_clave_especialidad
+                : json_decode($prof->palabras_clave_especialidad, true) ?? [];
+
+            $coincidencias = count(array_intersect(
+                collect($analisis['palabras_clave_encontradas'])->pluck('palabra')->toArray(),
+                $palabrasProf
+            ));
+
+            echo "   - {$prof->especialidad_principal}: {$coincidencias} coincidencias\n";
+            echo "     Palabras: " . json_encode($palabrasProf) . "\n";
+        }
+
+        // 4. Probar matching completo
+        echo "\n4. 🔍 PRUEBA DE MATCHING COMPLETO:\n";
+        $paciente = \App\Models\Paciente::first();
+        if ($paciente) {
+            $resultado = $this->procesarTriajeCompleto($paciente, $descripcion);
+            echo "   - Match: " . ($resultado['match_encontrado'] ? '✅ SÍ' : '❌ NO') . "\n";
+            echo "   - Puntaje: {$resultado['puntaje_compatibilidad']}%\n";
+            if ($resultado['match_encontrado']) {
+                echo "   - Profesional: {$resultado['profesional']->especialidad_principal}\n";
+                echo "   - ID: {$resultado['profesional']->id}\n";
+            } else {
+                echo "   - Razón: No se superó el umbral mínimo\n";
+            }
+        }
+
+        return $resultado ?? null;
+    }
+
+    private function busquedaAmplia(Paciente $paciente, array $sintomas, string $descripcion, Especialidad $especialidadOriginal)
+    {
+        Log::info("🔍 Realizando búsqueda amplia de profesionales...");
+
+        // Buscar profesionales de especialidades relacionadas
+        $palabrasClavePaciente = collect($sintomas['palabras_clave_encontradas'] ?? [])->pluck('palabra')->toArray();
+
+        $especialidadesCompatibles = Especialidad::activas()
+            ->where('id_especialidad', '!=', $especialidadOriginal->id_especialidad)
+            ->get()
+            ->filter(function ($especialidad) use ($palabrasClavePaciente) {
+                $palabrasEspecialidad = $especialidad->palabrasClave()->pluck('palabra')->toArray();
+                return count(array_intersect($palabrasClavePaciente, $palabrasEspecialidad)) > 0;
+            });
+
+        $mejorPuntaje = 0;
+        $profesionalOptimo = null;
+        $resultados = [];
+
+        foreach ($especialidadesCompatibles as $especialidad) {
+            $profesionales = $this->buscarProfesionalesPorPalabrasClave(
+                $palabrasClavePaciente,
+                $especialidad->codigo
+            );
+
+            foreach ($profesionales as $profesional) {
+                $puntaje = $this->calcularCompatibilidadMejorada($profesional, $sintomas, $descripcion);
+
+                if ($puntaje > $mejorPuntaje) {
+                    $mejorPuntaje = $puntaje;
+                    $profesionalOptimo = $profesional;
+                }
+
+                $resultados[] = [
+                    'profesional' => $profesional,
+                    'puntaje' => $puntaje,
+                    'especialidad' => $especialidad->nombre,
+                    'tipo_busqueda' => 'ampliada'
+                ];
+            }
+        }
+
+        if ($profesionalOptimo) {
+            Log::info("✅ MATCH ENCONTRADO en búsqueda amplia: {$profesionalOptimo->id} con {$mejorPuntaje}%");
+        }
+
         return [
             'profesional_optimo' => $profesionalOptimo,
             'puntaje' => $mejorPuntaje,
             'todos_los_resultados' => $resultados,
-            'detalles_matching' => $detallesMatching,
-            'umbral_minimo' => $umbralMinimo,
-            'total_profesionales_evaluados' => count($resultados)
+            'especialidad_recomendada' => $profesionalOptimo ? $profesionalOptimo->especialidad->nombre : $especialidadOriginal->nombre,
+            'umbral_minimo' => $this->configuracion['umbrales']['compatibilidad_minima'] ?? 30,
+            'total_profesionales_evaluados' => count($resultados),
+            'busqueda_ampliada' => true,
+            'detalles_matching' => []
         ];
+    }
+    private function resultadoSinProfesionales()
+    {
+        return [
+            'profesional_optimo' => null,
+            'puntaje' => 0,
+            'todos_los_resultados' => [],
+            'especialidad_recomendada' => 'psicologo',
+            'umbral_minimo' => 30,
+            'total_profesionales_evaluados' => 0,
+            'detalles_matching' => []
+        ];
+    }
+
+    private function inicializarEspecialidadesSiEsNecesario()
+    {
+        if (Especialidad::count() === 0) {
+            Log::info("Inicializando especialidades del sistema...");
+            Especialidad::inicializarEspecialidades();
+        }
     }
 
     private function calcularCompatibilidadMejorada(Profesional $profesional, array $sintomas, string $descripcion)
@@ -462,7 +836,18 @@ class MatchingService
 
     private function calcularCoincidenciaPalabrasMejorada(Profesional $profesional, array $sintomas)
     {
-        $palabrasClaveProfesional = $profesional->palabras_clave_especialidad ?? [];
+        // Manejar diferentes formatos de palabras clave
+        $palabrasClaveProfesional = [];
+
+        if (is_array($profesional->palabras_clave_especialidad)) {
+            $palabrasClaveProfesional = $profesional->palabras_clave_especialidad;
+        } elseif (is_string($profesional->palabras_clave_especialidad)) {
+            // Intentar decodificar JSON string
+            $decoded = json_decode($profesional->palabras_clave_especialidad, true);
+            $palabrasClaveProfesional = is_array($decoded) ? $decoded : [];
+        }
+
+        Log::info("🔍 Palabras clave profesional {$profesional->id}: " . json_encode($palabrasClaveProfesional));
 
         if (empty($palabrasClaveProfesional)) {
             Log::warning("Profesional {$profesional->id} no tiene palabras clave configuradas");
@@ -476,8 +861,8 @@ class MatchingService
             return 0.1;
         }
 
-        Log::info("📝 Comparando palabras - Profesional: " . json_encode($palabrasClaveProfesional));
-        Log::info("📝 Palabras paciente: " . json_encode($palabrasPaciente));
+        Log::info("🔍 Comparando - Profesional: " . json_encode($palabrasClaveProfesional));
+        Log::info("🔍 Paciente: " . json_encode($palabrasPaciente));
 
         foreach ($palabrasClaveProfesional as $palabraProfesional) {
             if (in_array($palabraProfesional, $palabrasPaciente)) {
@@ -575,7 +960,7 @@ class MatchingService
         ];
     }
 
-    private function determinarEspecialidadMejorado(array $analisisSintomas)
+    public function determinarEspecialidadMejorado(array $analisisSintomas)
     {
         $especialidadesPuntaje = [];
         $reglasEspecialidad = $this->configuracion['reglas_especialidad'];

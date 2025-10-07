@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Especialidad;
 use Illuminate\Console\Command;
 use App\Models\Profesional;
 use App\Models\PalabraClave;
@@ -31,9 +32,36 @@ class RepararSistemaMatching extends Command
         // 4. Crear profesional de emergencia si es necesario
         $this->crearProfesionalEmergenciaSiNecesario();
 
+        // 5. Verificar y crear especialidades si no existen
+        Especialidad::inicializarEspecialidades();
+        $this->info('✅ Especialidades verificadas');
+
+        // 6. Asignar especialidades a profesionales sin especialidad_id
+        $profesionalesSinEspecialidad = Profesional::whereNull('especialidad_id');
+
+        foreach ($profesionalesSinEspecialidad as $profesional) {
+            $especialidad = Especialidad::where('codigo', $profesional->especialidad_principal)
+                ->orWhere('nombre', 'like', "%{$profesional->especialidad_principal}%")
+                ->first();
+                
+            if ($especialidad) {
+                $profesional->especialidad_id = $especialidad->id_especialidad;
+                $profesional->save();
+            }
+        }
+
+        $this->info("✅ {$profesionalesSinEspecialidad->count()} profesionales actualizados");
+
+        // 3. Verificar palabras clave del sistema
+        $totalPalabras = PalabraClave::where('estado', true)->count();
+        if ($totalPalabras < 10) {
+            $this->call('db:seed', ['--class' => 'PalabrasClaveSeeder']);
+            $this->info('✅ Palabras clave del sistema verificadas');
+        }
+
         $this->info('=== REPARACIÓN COMPLETADA ===');
         
-        Log::info('Sistema de matching reparado automáticamente');
+        Log::info('Reparación del sistema completada');
         return Command::SUCCESS;
     }
 
