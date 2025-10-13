@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\ManuscritoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ClinicaController;
+use App\Http\Controllers\ProfesionalConfiguracionController;
 use App\Http\Controllers\ProfesionalController;
 use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\ConfiguracionController;
@@ -127,6 +128,18 @@ Route::middleware(['auth'])->group(function () {
 
         // Palabras Clave por Especialidad
         Route::get('/palabras-clave/por-especialidad/{especialidadId}', [GestionPalabrasClaveController::class, 'obtenerPorEspecialidad'])->name('admin.palabras-clave.por-especialidad');
+
+        // Admin - Configuración de especialidades
+        Route::get('/especialidades/{id}/configurar', [GestionEspecialidadesController::class, 'configurarEspecialidad'])
+        ->name('admin.especialidades.configurar');
+        Route::get('/admin/especialidades/{id}/configurar', [GestionEspecialidadesController::class, 'configurarEspecialidad'])
+            ->name('admin.especialidades.configurar');
+        Route::post('/especialidades/{id}/sintomas', [GestionEspecialidadesController::class, 'agregarSintomaEspecialidad'])
+        ->name('admin.especialidades.agregar-sintoma');
+        Route::post('/admin/especialidades/{id}/sintomas', [GestionEspecialidadesController::class, 'agregarSintomaEspecialidad'])
+            ->name('admin.especialidades.agregar-sintoma');
+        Route::delete('/especialidades/{id}/sintomas/{sintomaId}', [GestionEspecialidadesController::class, 'eliminarSintomaEspecialidad'])
+        ->name('admin.especialidades.eliminar-sintoma');
     });
 
     // Rutas para profesionales
@@ -149,6 +162,13 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/compatibilidad/{pacienteId}', [ProfesionalController::class, 'calcularCompatibilidad'])
             ->name('profesional.compatibilidad');
+
+        Route::get('/configuracion-sintomas', [ProfesionalConfiguracionController::class, 'mostrarConfiguracionSintomas'])
+            ->name('profesional.configuracion-sintomas');
+        Route::post('/configuracion-sintomas', [ProfesionalConfiguracionController::class, 'actualizarConfiguracionSintomas'])
+            ->name('profesional.configuracion-sintomas.actualizar');
+        Route::post('/disponibilidad', [ProfesionalConfiguracionController::class, 'activarDisponibilidad'])
+            ->name('profesional.disponibilidad.activar');
     });
 
     // Opcional: si alguien intenta hacer GET a /profesional/palabras-clave, redirige al modal/configuración
@@ -240,4 +260,60 @@ Route::get('/reparar-sistema-completo', function () {
         'profesionales_aprobados' => App\Models\Profesional::where('estado_verificacion', 'aprobado')->count(),
         'especialidades' => App\Models\Profesional::pluck('especialidad_principal')->toArray()
     ]);
+});
+
+Route::get('/diagnostico-matching/{descripcion?}', function ($descripcion = "Tengo ansiedad y problemas con mi familia") {
+    $paciente = App\Models\Paciente::first();
+    
+    if (!$paciente) {
+        return response()->json(['error' => 'No hay pacientes en el sistema']);
+    }
+
+    $matchingService = new App\Services\MatchingService();
+    
+    // Diagnóstico paso a paso
+    $resultado = $matchingService->diagnosticoCompleto($descripcion);
+    
+    return response()->json($resultado);
+});
+
+Route::get('/diagnostico-matching-completo', function () {
+    try {
+        $paciente = App\Models\Paciente::first();
+        
+        if (!$paciente) {
+            return response()->json([
+                'error' => 'No hay pacientes en el sistema',
+                'solucion' => 'Ejecuta: php artisan db:seed --class=PacienteSeeder'
+            ]);
+        }
+
+        // Debug del paciente
+        $debugPaciente = [
+            'id' => $paciente->id,
+            'id_paciente' => $paciente->id_paciente,
+            'usuario_id' => $paciente->usuario_id,
+            'existe' => $paciente->exists,
+            'atributos' => $paciente->getAttributes()
+        ];
+
+        $descripcion = "Tengo ansiedad y problemas con mi familia";
+        $matchingService = new App\Services\MatchingService();
+        
+        // Diagnóstico paso a paso
+        $resultado = $matchingService->diagnosticoCompleto($descripcion);
+        
+        return response()->json([
+            'debug_paciente' => $debugPaciente,
+            'diagnostico' => $resultado,
+            'estado' => 'DIAGNÓSTICO COMPLETADO'
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+            'solucion' => 'Ejecuta los comandos de reparación'
+        ], 500);
+    }
 });

@@ -34,9 +34,10 @@ class Especialidad extends Model
         return $this->hasMany(Profesional::class, 'especialidad_id');
     }
 
+    // Relación con palabras clave (si no existe)
     public function palabrasClave()
     {
-        return $this->hasMany(PalabraClave::class, 'especialidad_id');
+        return $this->hasMany(PalabraClave::class, 'especialidad_recomendada', 'nombre');
     }
 
     // Scopes
@@ -48,7 +49,7 @@ class Especialidad extends Model
     public function scopePorRol($query, $rol)
     {
         return $query->where('rol_permitido', $rol)
-                    ->orWhere('rol_permitido', 'general');
+            ->orWhere('rol_permitido', 'general');
     }
 
     public function scopeParaPsicologo($query)
@@ -71,7 +72,7 @@ class Especialidad extends Model
     {
         return [
             'psicologo' => 'Psicólogo',
-            'psiquiatra' => 'Psiquiatra', 
+            'psiquiatra' => 'Psiquiatra',
             'nutricionista' => 'Nutricionista',
             'general' => 'General/Múltiples Roles'
         ];
@@ -97,7 +98,7 @@ class Especialidad extends Model
             ],
             [
                 'nombre' => 'Psicología Infantil',
-                'codigo' => 'psicologia_infantil', 
+                'codigo' => 'psicologia_infantil',
                 'descripcion' => 'Atención psicológica especializada en niños y adolescentes',
                 'rol_permitido' => 'psicologo',
                 'color' => '#8B5CF6',
@@ -138,7 +139,7 @@ class Especialidad extends Model
                 'nombre' => 'Psiquiatría Infantil',
                 'codigo' => 'psiquiatria_infantil',
                 'descripcion' => 'Diagnóstico y tratamiento de trastornos mentales en niños y adolescentes',
-                'rol_permitido' => 'psiquiatra', 
+                'rol_permitido' => 'psiquiatra',
                 'color' => '#F59E0B',
                 'icono' => 'fas fa-baby',
                 'configuracion' => [
@@ -216,5 +217,12 @@ class Especialidad extends Model
     public function getIconoAttribute($value)
     {
         return $value ?? 'fas fa-user-md'; // Icono por defecto
+    }
+
+    // NUEVA RELACIÓN: Síntomas de la especialidad
+    public function sintomas()
+    {
+        return $this->hasMany(SintomaEspecialidad::class, 'especialidad_id')
+            ->where('activo', true);
     }
 }

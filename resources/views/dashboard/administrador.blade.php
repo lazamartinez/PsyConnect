@@ -485,6 +485,47 @@
                             </div>
                         </div>
                     </div>
+                    <!-- Sección de Especialidades - AGREGAR ESTO -->
+                    <div class="bg-white rounded-lg shadow mb-8">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <div class="flex justify-between items-center">
+                                <h2 class="text-lg font-semibold text-gray-900">🎓 Gestión de Especialidades y Síntomas
+                                </h2>
+                                <div class="flex space-x-3">
+                                    <a href="{{ route('admin.especialidades.index') }}"
+                                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition duration-200 flex items-center">
+                                        <i class="fas fa-graduation-cap mr-2"></i>Gestionar Especialidades
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                @foreach ($especialidades as $rol => $especialidadesRol)
+                                    @foreach ($especialidadesRol as $especialidad)
+                                        <div
+                                            class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition duration-200">
+                                            <div class="flex justify-between items-start mb-3">
+                                                <h3 class="font-semibold text-gray-800">{{ $especialidad->nombre }}
+                                                </h3>
+                                                <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
+                                                    {{ $especialidad->sintomas_count ?? 0 }} síntomas
+                                                </span>
+                                            </div>
+                                            <p class="text-sm text-gray-600 mb-4">
+                                                {{ Str::limit($especialidad->descripcion, 80) }}</p>
+                                            <div class="flex space-x-2">
+                                                <a href="{{ route('admin.especialidades.configurar', $especialidad->id_especialidad) }}"
+                                                    class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-center py-2 rounded text-sm transition duration-200">
+                                                    <i class="fas fa-cog mr-1"></i>Configurar
+                                                </a>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Reportes de Matching -->
@@ -696,11 +737,11 @@
                             </div>
                         </div>
                         ${data.bio ? `
-                                                        <div class="mt-4">
-                                                            <h4 class="font-semibold text-gray-700">Biografía</h4>
-                                                            <p class="text-gray-600">${data.bio}</p>
-                                                        </div>
-                                                        ` : ''}
+                                                            <div class="mt-4">
+                                                                <h4 class="font-semibold text-gray-700">Biografía</h4>
+                                                                <p class="text-gray-600">${data.bio}</p>
+                                                            </div>
+                                                            ` : ''}
                     `;
                     document.getElementById('modalDetalles').classList.remove('hidden');
                 })

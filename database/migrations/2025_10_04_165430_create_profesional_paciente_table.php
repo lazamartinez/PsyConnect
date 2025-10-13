@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -9,7 +10,9 @@ return new class extends Migration
     public function up()
     {
         Schema::create('profesional_paciente', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            // 🔥 CORRECCIÓN CRÍTICA: Agregar default para UUID
+            $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
+            
             $table->uuid('profesional_id');
             $table->uuid('paciente_id');
             $table->date('fecha_asignacion');
@@ -32,6 +35,9 @@ return new class extends Migration
             // 🔒 Unicidad de relación
             $table->unique(['profesional_id', 'paciente_id']);
         });
+
+        // 🔥 CORRECCIÓN ADICIONAL: Asegurar que PostgreSQL genere UUIDs
+        DB::statement('ALTER TABLE profesional_paciente ALTER COLUMN id SET DEFAULT gen_random_uuid()');
     }
 
     public function down()

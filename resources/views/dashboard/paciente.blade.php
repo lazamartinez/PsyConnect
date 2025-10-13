@@ -208,11 +208,12 @@
                     console.log('Formulario enviado...');
 
                     const descripcion = document.getElementById('descripcion_sintomatologia')?.value
-                    .trim() || '';
+                        .trim() || '';
 
                     if (descripcion.length < 50) {
                         alert(
-                            'Por favor, describe tus síntomas con al menos 50 caracteres para un análisis preciso.');
+                            'Por favor, describe tus síntomas con al menos 50 caracteres para un análisis preciso.'
+                            );
                         return;
                     }
 
@@ -579,34 +580,54 @@
             </div>
         </div>
 
-        <!-- Sección de Triaje Integrado -->
-        <div class="bg-white rounded-2xl card-shadow p-6 mb-8">
-            <h2 class="text-xl font-bold text-gray-800 mb-4">🚨 Iniciar Proceso de Triaje y Matching</h2>
-            <p class="text-gray-600 mb-4">Completa nuestro formulario de triaje para encontrar al profesional más
-                adecuado para ti.</p>
+        <!-- Sección de Triaje Integrado - VERSIÓN MEJORADA -->
+        <div
+            class="bg-gradient-to-r from-purple-500 to-pink-600 rounded-2xl card-shadow p-8 mb-8 text-white relative overflow-hidden">
+            <!-- Efecto de partículas -->
+            <div class="absolute inset-0 opacity-10">
+                <div class="particle" style="top:20%; left:10%; animation-delay: 0s;"></div>
+                <div class="particle" style="top:60%; left:80%; animation-delay: 1s;"></div>
+                <div class="particle" style="top:40%; left:50%; animation-delay: 2s;"></div>
+            </div>
 
-            <!-- Botón para abrir el modal de triaje -->
-            <button onclick="abrirModalTriaje()"
-                class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-semibold transition duration-300">
-                <i class="fas fa-stethoscope mr-2"></i>Iniciar Triaje Automático
-            </button>
-
-            <!-- Información adicional -->
-            <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div class="flex items-center text-green-600">
-                    <i class="fas fa-bolt mr-2"></i>
-                    <span>Proceso automático</span>
-                </div>
-                <div class="flex items-center text-blue-600">
-                    <i class="fas fa-shield-alt mr-2"></i>
-                    <span>100% confidencial</span>
-                </div>
-                <div class="flex items-center text-purple-600">
-                    <i class="fas fa-user-md mr-2"></i>
-                    <span>Matching inteligente</span>
+            <div class="relative z-10">
+                <div class="flex flex-col lg:flex-row justify-between items-center">
+                    <div class="flex-1 mb-6 lg:mb-0">
+                        <h2 class="text-2xl font-bold mb-3">🚀 Encuentra tu Profesional Ideal</h2>
+                        <p class="text-purple-100 text-lg mb-4">
+                            Nuestro sistema inteligente analizará tus síntomas y te conectará con el profesional más
+                            adecuado para ti.
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                            <div class="flex items-center">
+                                <i class="fas fa-brain mr-2 text-yellow-300"></i>
+                                <span>Análisis inteligente de síntomas</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-bolt mr-2 text-green-300"></i>
+                                <span>Matching en tiempo real</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-shield-alt mr-2 text-blue-300"></i>
+                                <span>100% confidencial</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <button onclick="abrirModalTriaje()"
+                            class="bg-white text-purple-600 hover:bg-purple-50 px-8 py-4 rounded-full font-bold text-lg transition duration-300 transform hover:scale-105 shadow-lg flex items-center mx-auto">
+                            <i class="fas fa-stethoscope mr-3 text-2xl"></i>
+                            <div class="text-left">
+                                <div>Iniciar Triaje Automático</div>
+                                <div class="text-sm font-normal text-purple-500">30 usos gratis disponibles</div>
+                            </div>
+                        </button>
+                        <p class="text-purple-200 text-sm mt-3">Sin compromiso • Resultados inmediatos</p>
+                    </div>
                 </div>
             </div>
         </div>
+
 
         <!-- Modal de Triaje Integrado - VERSIÓN MEJORADA CON CORAZÓN -->
         <div id="modalTriaje" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Especialidad;
+use App\Models\PalabraClave;
+use App\Models\SintomaEspecialidad;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -190,6 +192,66 @@ class GestionEspecialidadesController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener especialidades: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    public function configurarEspecialidad($id)
+    {
+        $especialidad = Especialidad::with(['palabrasClave', 'sintomas'])->findOrFail($id);
+        $palabrasClave = PalabraClave::activas()->get();
+
+        return view('admin.especialidades.configurar', compact('especialidad', 'palabrasClave'));
+    }
+
+    public function agregarSintomaEspecialidad(Request $request, $id)
+    {
+        $request->validate([
+            'palabra_clave_id' => 'required|exists:palabras_clave,id_palabra_clave',
+            'sintoma' => 'required|string|max:255',
+            'descripcion' => 'nullable|string|max:500',
+            'nivel_gravedad' => 'required|in:leve,moderado,grave,critico'
+        ]);
+
+        try {
+            $sintoma = SintomaEspecialidad::create([
+                'especialidad_id' => $id,
+                'palabra_clave_id' => $request->palabra_clave_id,
+                'sintoma' => $request->sintoma,
+                'descripcion' => $request->descripcion,
+                'nivel_gravedad' => $request->nivel_gravedad,
+                'activo' => true
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Síntoma agregado exitosamente',
+                'sintoma' => $sintoma
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al agregar síntoma: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function eliminarSintomaEspecialidad($id, $sintomaId)
+    {
+        try {
+            $sintoma = SintomaEspecialidad::where('especialidad_id', $id)
+                ->where('id_sintoma', $sintomaId)
+                ->firstOrFail();
+
+            $sintoma->update(['activo' => false]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Síntoma eliminado exitosamente'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar síntoma: ' . $e->getMessage()
             ], 500);
         }
     }

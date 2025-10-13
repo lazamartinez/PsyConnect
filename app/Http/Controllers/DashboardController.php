@@ -11,6 +11,8 @@ use App\Models\Paciente;
 use App\Models\TriajeInicial;
 use App\Models\ConfiguracionMatching;
 use App\Models\Cita;
+use App\Models\Especialidad; // AGREGAR
+use App\Models\SintomaEspecialidad; // AGREGAR
 use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
@@ -57,13 +59,12 @@ class DashboardController extends Controller
             'manuscritosRecientes',
             'ieaReciente',
             'matchesPendientes',
-            'clinicasActivas' // Ahora está definida
+            'clinicasActivas'
         ));
     }
 
     private function dashboardProfesional(Usuario $usuario)
     {
-
         $profesional = Profesional::with(['clinicas'])->where('usuario_id', $usuario->id_usuario)->first();
 
         if (!$profesional) {
@@ -96,7 +97,6 @@ class DashboardController extends Controller
             'sesiones_completadas' => $profesional->sesionesCompletadasEsteMes(),
             'ingresos' => $profesional->ingresosEsteMes()
         ];
-        $profesional = $usuario->profesional;
 
         // OBTENER PALABRAS CLAVE FILTRADAS POR ESPECIALIDAD DEL ADMIN
         $palabrasClaveSistema = \App\Models\PalabraClave::where('estado', true)
@@ -116,14 +116,12 @@ class DashboardController extends Controller
         // CORREGIR: Inicializar $citasHoy con valor por defecto
         $citasHoy = 0;
         try {
-            // Verificar si la tabla de citas existe antes de hacer la consulta
             if (\Illuminate\Support\Facades\Schema::hasTable('citas')) {
                 $citasHoy = \App\Models\Cita::where('profesional_id', $profesional->id)
                     ->whereDate('fecha_cita', today())
                     ->count();
             }
         } catch (\Exception $e) {
-            // Si hay error, mantener el valor por defecto 0
             $citasHoy = 0;
         }
 
@@ -159,6 +157,13 @@ class DashboardController extends Controller
             ->with('usuario')
             ->get();
 
+        // NUEVO: Obtener configuraciones actuales del profesional
+        $configuracionesActuales = \App\Models\ConfiguracionProfesionalSintoma::with('sintoma')
+            ->where('profesional_id', $profesional->id_profesional)
+            ->where('activo', true)
+            ->get()
+            ->keyBy('sintoma_id');
+
         return view('dashboard.profesional', compact(
             'profesional',
             'pacientesActivos',
@@ -170,7 +175,8 @@ class DashboardController extends Controller
             'coincidenciasMes',
             'tasaAceptacion',
             'pacientesPendientes',
-            'palabrasClaveSistema' // NUEVO: pasar palabras clave filtradas
+            'palabrasClaveSistema',
+            'configuracionesActuales' // NUEVO: pasar configuraciones actuales
         ));
     }
 
@@ -183,8 +189,13 @@ class DashboardController extends Controller
         $triajesPendientes = TriajeInicial::where('estado_triaje', 'pendiente')->count();
 
         // Nuevos contadores para el panel de control
-        $totalEspecialidades = \App\Models\Especialidad::count();
+        $totalEspecialidades = Especialidad::count();
         $totalPalabrasClave = \App\Models\PalabraClave::count();
+
+        // NUEVO: Obtener especialidades organizadas por rol con conteo de síntomas
+        $especialidades = Especialidad::withCount(['sintomas' => function($query) {
+            $query->where('activo', true);
+        }])->get()->groupBy('rol');
 
         // Nuevos contadores para solicitudes
         $solicitudesPendientes = Profesional::where('estado_verificacion', 'pendiente')->count();
@@ -223,9 +234,11 @@ class DashboardController extends Controller
             'efectividadMatching',
             'tiempoPromedioAsignacion',
             'totalEspecialidades', 
-            'totalPalabrasClave'   
+            'totalPalabrasClave',
+            'especialidades' // NUEVO: pasar especialidades organizadas
         ));
     }
+
     private function calcularTasaAceptacion(Profesional $profesional)
     {
         $totalAsignaciones = $profesional->pacientes()->count();
@@ -233,7 +246,6 @@ class DashboardController extends Controller
         return $totalAsignaciones > 0 ? round(($aceptadas / $totalAsignaciones) * 100, 1) : 0;
     }
 
-    // AGREGAR ESTE MÉTODO PARA NORMALIZAR ESPECIALIDADES
     private function normalizarEspecialidad($especialidad)
     {
         $especialidad = mb_strtolower(trim($especialidad));

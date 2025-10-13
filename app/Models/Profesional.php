@@ -122,26 +122,35 @@ class Profesional extends Model
     }
 
     // ESTADOS
-    public function estaAprobado() { 
-        return $this->estado_verificacion === self::ESTADO_APROBADO; 
+    public function estaAprobado()
+    {
+        return $this->estado_verificacion === self::ESTADO_APROBADO;
     }
-    
-    public function estaPendiente() { 
-        return $this->estado_verificacion === self::ESTADO_PENDIENTE; 
+
+    public function estaPendiente()
+    {
+        return $this->estado_verificacion === self::ESTADO_PENDIENTE;
     }
-    
-    public function estaRechazado() { 
-        return $this->estado_verificacion === self::ESTADO_RECHAZADO; 
+
+    public function estaRechazado()
+    {
+        return $this->estado_verificacion === self::ESTADO_RECHAZADO;
+    }
+
+    public function configuracionesSintomas()
+    {
+        return $this->hasMany(ConfiguracionProfesionalSintoma::class, 'profesional_id');
     }
 
     // RELACIONES
-    public function usuario() { 
-        return $this->belongsTo(Usuario::class, 'usuario_id'); 
+    public function usuario()
+    {
+        return $this->belongsTo(Usuario::class, 'usuario_id');
     }
 
     public function especialidad()
     {
-        return $this->belongsTo(Especialidad::class, 'especialidad_id');
+        return $this->belongsTo(Especialidad::class,'especialidad_principal', 'nombre');
     }
 
     public function clinicas()
@@ -152,7 +161,7 @@ class Profesional extends Model
             'profesional_id',
             'clinica_id'
         )->withPivot(['horario_trabajo', 'estado', 'fecha_ingreso'])
-         ->withTimestamps();
+            ->withTimestamps();
     }
 
     public function pacientes()
@@ -328,15 +337,15 @@ class Profesional extends Model
     private function calcularPuntajePreferencias($preferencias)
     {
         $puntaje = 0;
-        
+
         if (isset($preferencias['modalidad']) && $preferencias['modalidad'] === $this->modalidad_trabajo) {
             $puntaje += 0.5;
         }
-        
+
         if (isset($preferencias['idioma']) && in_array($preferencias['idioma'], $this->idiomas ?? [])) {
             $puntaje += 0.3;
         }
-        
+
         if (isset($preferencias['enfoque']) && $preferencias['enfoque'] === $this->enfoque_terapeutico) {
             $puntaje += 0.2;
         }
@@ -348,7 +357,7 @@ class Profesional extends Model
     public function obtenerPalabrasClaveCompletas()
     {
         $palabrasPropias = $this->palabras_clave_especialidad ?? [];
-        
+
         // Agregar palabras clave de la especialidad parametrizable
         if ($this->especialidad) {
             $palabrasEspecialidad = $this->especialidad->obtenerPalabrasClaveRecomendadas()->pluck('palabra')->toArray();
@@ -473,9 +482,9 @@ class Profesional extends Model
     // MÉTODOS DE VALIDACIÓN
     public function puedeRecibirPacientes()
     {
-        return $this->estaAprobado() && 
-               $this->disponibilidad_inmediata && 
-               $this->tieneCapacidad();
+        return $this->estaAprobado() &&
+            $this->disponibilidad_inmediata &&
+            $this->tieneCapacidad();
     }
 
     // BOOT PARA UUID
@@ -500,8 +509,10 @@ class Profesional extends Model
 
         static::updating(function ($model) {
             // Cuando se aprueba un profesional, activar disponibilidad por defecto
-            if ($model->isDirty('estado_verificacion') && 
-                $model->estado_verificacion === self::ESTADO_APROBADO) {
+            if (
+                $model->isDirty('estado_verificacion') &&
+                $model->estado_verificacion === self::ESTADO_APROBADO
+            ) {
                 $model->disponibilidad_inmediata = true;
             }
         });

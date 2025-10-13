@@ -474,6 +474,85 @@
                             </div>
                         </div>
 
+                        <!-- Sección de Configuración de Síntomas - AGREGAR ESTO -->
+                        <div class="bg-white rounded-lg shadow mb-8">
+                            <div class="px-6 py-4 border-b border-gray-200">
+                                <div class="flex justify-between items-center">
+                                    <h2 class="text-lg font-semibold text-gray-900">⚙️ Configuración de Síntomas y
+                                        Disponibilidad</h2>
+                                    <div class="flex space-x-3">
+                                        <a href="{{ route('profesional.configuracion-sintomas') }}"
+                                            class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold transition duration-200 flex items-center">
+                                            <i class="fas fa-sliders-h mr-2"></i>Configurar Síntomas
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <!-- Botón de Disponibilidad Global -->
+                                    <div class="bg-white rounded-lg shadow p-6 mb-6">
+                                        <div class="flex justify-between items-center">
+                                            <div>
+                                                <h3 class="text-lg font-semibold text-gray-900 mb-2">🎯 Estado de
+                                                    Disponibilidad</h3>
+                                                <p class="text-gray-600">Activa tu disponibilidad para recibir nuevos
+                                                    pacientes</p>
+                                            </div>
+                                        </div>
+
+                                        <!-- Indicador de estado -->
+                                        <div
+                                            class="mt-4 p-3 rounded-lg {{ $profesional->disponibilidad_inmediata ? 'bg-green-100 border border-green-200' : 'bg-yellow-100 border border-yellow-200' }}">
+                                            <div class="flex items-center">
+                                                <i
+                                                    class="fas {{ $profesional->disponibilidad_inmediata ? 'fa-bell text-green-600' : 'fa-bell-slash text-yellow-600' }} mr-2"></i>
+                                                <span
+                                                    class="{{ $profesional->disponibilidad_inmediata ? 'text-green-800' : 'text-yellow-800' }}">
+                                                    {{ $profesional->disponibilidad_inmediata
+                                                        ? 'Estás recibiendo notificaciones de nuevos pacientes que coincidan con tus síntomas configurados.'
+                                                        : 'No estás recibiendo notificaciones. Activa tu disponibilidad para empezar a recibir pacientes.' }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Resumen de Configuración -->
+                                    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                        <h3 class="font-semibold text-green-900 mb-3 flex items-center">
+                                            <i class="fas fa-stethoscope mr-2"></i>Mis Síntomas Configurados
+                                        </h3>
+                                        @if ($configuracionesActuales && $configuracionesActuales->count() > 0)
+                                            <div class="space-y-2">
+                                                @foreach ($configuracionesActuales->take(3) as $config)
+                                                    <div class="flex justify-between items-center text-sm">
+                                                        <span
+                                                            class="text-green-800">{{ $config->sintoma->sintoma }}</span>
+                                                        <span
+                                                            class="bg-green-200 text-green-800 px-2 py-1 rounded text-xs">
+                                                            {{ ucfirst($config->periodo_activo) }}
+                                                        </span>
+                                                    </div>
+                                                @endforeach
+                                                @if ($configuracionesActuales->count() > 3)
+                                                    <p class="text-green-600 text-sm mt-2">
+                                                        +{{ $configuracionesActuales->count() - 3 }} más síntomas
+                                                        configurados
+                                                    </p>
+                                                @endif
+                                            </div>
+                                        @else
+                                            <p class="text-green-700 text-sm">No tienes síntomas configurados</p>
+                                            <a href="{{ route('profesional.configuracion-sintomas') }}"
+                                                class="inline-block mt-2 bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">
+                                                Configurar ahora
+                                            </a>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Estadísticas de Matching -->
                         <div class="mt-6 p-4 bg-gray-50 rounded-lg">
                             <h3 class="font-medium text-gray-700 mb-2">Estadísticas de Matching</h3>
@@ -533,6 +612,7 @@
                     });
             }
         }
+
         // Filtrar palabras
         function filtrarPalabras() {
             const busqueda = document.getElementById('buscarPalabra').value.toLowerCase();
@@ -588,6 +668,9 @@
             });
 
             actualizarEstadisticas();
+
+            // Inicializar el toggle de disponibilidad
+            initToggleDisponibilidad();
         });
 
         // Actualizar vista palabras seleccionadas
@@ -704,87 +787,149 @@
                 });
         }
 
-        document.getElementById('toggleDisponibilidad').addEventListener('click', function() {
-            const isAvailable = this.getAttribute('aria-checked') === 'true';
-            const newState = !isAvailable;
+        // ========== TOGGLE DISPONIBILIDAD ==========
+        function initToggleDisponibilidad() {
+            const toggleButton = document.getElementById('toggleDisponibilidad');
 
-            // Mostrar loading
+            if (toggleButton) {
+                console.log('Toggle button encontrado, agregando event listener...');
+
+                // Remover event listeners existentes para evitar duplicados
+                toggleButton.replaceWith(toggleButton.cloneNode(true));
+
+                // Obtener la nueva referencia
+                const newToggleButton = document.getElementById('toggleDisponibilidad');
+
+                newToggleButton.addEventListener('click', handleToggleDisponibilidad);
+
+                console.log('Event listener agregado correctamente');
+            } else {
+                console.error('Toggle button NO encontrado en el DOM');
+            }
+        }
+
+        function handleToggleDisponibilidad() {
             const button = this;
-            const originalBg = button.className;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin mx-auto my-1"></i>';
-            button.disabled = true;
+            const isCurrentlyAvailable = button.getAttribute('aria-checked') === 'true';
+            const newState = !isCurrentlyAvailable;
 
+            console.log('Cambiando disponibilidad de', isCurrentlyAvailable, 'a', newState);
+
+            // Mostrar estado de carga
+            button.disabled = true;
+            const originalHTML = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mx-auto my-1"></i>';
+
+            // Crear form data
+            const formData = new FormData();
+            formData.append('disponible', newState);
+            formData.append('_token', '{{ csrf_token() }}');
+
+            console.log('Enviando solicitud a /profesional/disponibilidad...');
+
+            // Hacer la petición
             fetch('/profesional/disponibilidad', {
                     method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        disponibilidad: newState
-                    })
+                    body: formData
                 })
-                .then(response => response.json())
+                .then(response => {
+                    console.log('Respuesta recibida, status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('Datos recibidos:', data);
+
                     if (data.success) {
-                        // Actualizar UI
-                        button.setAttribute('aria-checked', newState.toString());
-                        button.className = originalBg.replace(
-                            newState ? 'bg-gray-300' : 'bg-green-500',
-                            newState ? 'bg-green-500' : 'bg-gray-300'
-                        );
-                        button.querySelector('span').className =
-                            `pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${newState ? 'translate-x-5' : 'translate-x-0'}`;
-
-                        document.getElementById('disponibilidadText').textContent =
-                            newState ? 'Disponible' : 'No Disponible';
-
-                        // Mostrar notificación
-                        showNotification(
-                            `Disponibilidad ${newState ? 'activada' : 'desactivada'} correctamente`,
-                            'success');
+                        // Actualizar UI inmediatamente
+                        updateToggleUI(newState);
+                        showNotification(data.message, 'success');
+                        console.log('Disponibilidad actualizada exitosamente');
                     } else {
-                        throw new Error(data.message);
+                        throw new Error(data.message || 'Error desconocido del servidor');
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
-                    showNotification('Error al actualizar disponibilidad', 'error');
-                    // Restaurar estado anterior
-                    button.innerHTML =
-                        '<span aria-hidden="true" class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>';
-                    button.disabled = false;
+                    console.error('Error en la solicitud:', error);
+                    showNotification('Error al actualizar disponibilidad: ' + error.message, 'error');
                 })
                 .finally(() => {
                     // Restaurar botón
-                    setTimeout(() => {
-                        button.innerHTML =
-                            '<span aria-hidden="true" class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>';
-                        button.disabled = false;
-                    }, 1000);
+                    button.innerHTML = originalHTML;
+                    button.disabled = false;
                 });
-        });
+        }
+
+        function updateToggleUI(isAvailable) {
+            const button = document.getElementById('toggleDisponibilidad');
+            const textElement = document.getElementById('disponibilidadText');
+
+            if (!button || !textElement) {
+                console.error('No se encontraron elementos para actualizar UI');
+                return;
+            }
+
+            // Actualizar texto
+            textElement.textContent = isAvailable ? 'Disponible' : 'No Disponible';
+
+            // Actualizar toggle visual
+            button.setAttribute('aria-checked', isAvailable.toString());
+
+            // Actualizar clases
+            if (isAvailable) {
+                button.classList.remove('bg-gray-300');
+                button.classList.add('bg-green-500');
+                if (button.querySelector('span')) {
+                    button.querySelector('span').classList.remove('translate-x-0');
+                    button.querySelector('span').classList.add('translate-x-5');
+                }
+            } else {
+                button.classList.remove('bg-green-500');
+                button.classList.add('bg-gray-300');
+                if (button.querySelector('span')) {
+                    button.querySelector('span').classList.remove('translate-x-5');
+                    button.querySelector('span').classList.add('translate-x-0');
+                }
+            }
+
+            console.log('UI actualizada, nuevo estado:', isAvailable);
+        }
 
         function showNotification(message, type = 'info') {
+            // Remover notificaciones existentes
+            const existingNotifications = document.querySelectorAll('.custom-notification');
+            existingNotifications.forEach(notification => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            });
+
             const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg text-white ${
-        type === 'success' ? 'bg-green-500' : 
-        type === 'error' ? 'bg-red-500' : 'bg-blue-500'
-    }`;
+            notification.className = `custom-notification fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg text-white ${
+                type === 'success' ? 'bg-green-500' : 
+                type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+            }`;
             notification.innerHTML = `
-        <div class="flex items-center">
-            <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : 'info'} mr-2"></i>
-            <span>${message}</span>
-        </div>
-    `;
+                <div class="flex items-center">
+                    <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : 'info'} mr-2"></i>
+                    <span>${message}</span>
+                </div>
+            `;
             document.body.appendChild(notification);
 
             setTimeout(() => {
-                notification.remove();
-            }, 3000);
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 4000);
         }
+
+        // Debug: Verificar que el script se carga correctamente
+        console.log('Script de dashboard profesional cargado correctamente');
     </script>
+
 </body>
 
 </html>

@@ -11,20 +11,21 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Registrar middlewares específicos de rutas
         $middleware->alias([
             'profesional' => \App\Http\Middleware\ProfesionalMiddleware::class,
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'paciente' => \App\Http\Middleware\PacienteMiddleware::class,
             'verificar.matching' => \App\Http\Middleware\VerificarSistemaMatching::class,
         ]);
-        // Aplicar globalmente o a rutas específicas
         $middleware->web(append: [
             \App\Http\Middleware\VerificarSistemaMatching::class,
         ]);
     })
-
+    ->withCommands([
+        \App\Console\Commands\RepararProfesionales::class,
+    ])
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })
     ->create();
+
